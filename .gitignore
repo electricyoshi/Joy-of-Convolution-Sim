@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+*.log
+*.lnk
+# Original JHU files (applet source/classes, audio, PDFs, screenshots of the running
+# applet). "All rights reserved" by JHU / W. J. Rugh: kept locally for reference only,
+# never committed or published. See PLAN.md "Permission".
+reference/
+# Compiled probe classes
+tools/build/
