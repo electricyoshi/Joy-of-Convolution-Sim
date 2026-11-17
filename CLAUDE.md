@@ -95,8 +95,8 @@ Michael Ross 2001), for a Seattle Pacific University course. Sibling and style m
 
 ## Status
 - 2026-11-17: git repo created and pushed (public, `electricyoshi/Joy-of-Convolution-Sim`, main).
-- Phase 0 done except the 10 DT button GIFs (DOWNLOAD_LIST.md §5): once Jon saves them, re-run
-  DtProbe (the button-row layout depends on icon size) and update the DT geometry in RESEARCH.md.
+- Phase 0 done. The 10 DT button GIFs were fetched 2026-11-17 through Claude-in-Chrome (in-page
+  `fetch`, base64 back, written to `reference/dt/`); DtProbe re-run; RESEARCH.md DT geometry updated.
 - **Phase 1 (CT) first port done 2026-11-17**: arrays identical to the original in all 5
   scenarios, tests green. Waiting for Jon's CHECKLIST.md run on Windows and Mac, and his check of
   the transcripts against the audio (the page's text was cleaned up from Whisper

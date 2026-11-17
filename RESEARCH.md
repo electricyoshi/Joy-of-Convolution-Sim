@@ -97,10 +97,12 @@ white in appletviewer; the JHU page put the applet in a `#C0C0C0` table cell.
 
 ### DT applet (Swing JApplet, 600×600; Ross 2001 update)
 - No source anywhere; `reference/dt/javap/*.txt` holds the full `javap -c -p` disassembly (10 classes).
-- GridBag layout, captured at (before the button GIFs were saved; **re-capture once they are**):
-  x[n] panel 9,6,286,128 · h[n] panel 305,6,286,128 · button rows y = 139, h 45
-  (`Select:` label 79 wide, five 41-wide icon JLabels) · "x[n-k] and h[k]" 9,189,582,128 ·
-  "x[n-k]h[k]" 9,327,582,128 · y[n] 9,465,582,128.
+- GridBag layout (re-captured 2026-11-17 with the 10 button GIFs, 29 x 21 px each, in place;
+  the earlier capture without them was wrong): x[n] panel 9,7,286,126 · h[n] panel 305,7,286,126 ·
+  button rows y = 138, h 52 (`Select:` label 54 wide at x = 5 / 301, five 46-wide icon JLabels at
+  x = 61, 109, 157, 205, 253 / 357, 405, 453, 501, 549) · "x[n-k] and h[k]" 9,195,582,126 ·
+  "x[n-k]h[k]" 9,331,582,126 · y[n] 9,467,582,126. Grey (Swing default) background; the icon
+  labels have raised bevel borders.
 - Presets (tooltips): Square pulse, One period of a square wave, Right-sided exponential,
   Unit Impulse, Clear. Button faces are `x_*.gif` / `h_*.gif` loaded from the codebase.
 - Stem plots; fixed axes ±5 for x/h/dual, ±10 for product and y; n axis −12..12 (constants

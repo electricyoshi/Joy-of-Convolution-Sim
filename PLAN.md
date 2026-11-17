@@ -56,7 +56,7 @@ the MP3 links, the applet, the quiz, and credits.
 
 ## Phases
 
-### Phase 0: Reference capture (done 2026-11-17 except the DT button GIFs; see CLAUDE.md "Ground-truth tools")
+### Phase 0: Reference capture (done 2026-11-17; see CLAUDE.md "Ground-truth tools")
 1. **Original files → `reference/`: Jon saves them from Chrome** using the exact links in
    [DOWNLOAD_LIST.md](DOWNLOAD_LIST.md) (27 required, 16 optional). Cloudflare blocks scripted
    downloads, and spoofing a browser is not allowed.
@@ -144,7 +144,7 @@ Header line, e.g.: *"The Joy of Convolution" by Steven Crutchfield, Johns Hopkin
 - Port: electricyoshi, for a Seattle Pacific University course (wording TBD)
 
 ## Open items for Jon
-- Done: files saved (2026-11-17). **Still needed:** the 10 DT button GIFs in DOWNLOAD_LIST.md section 5.
+- Done: files saved (2026-11-17), including the 10 DT button GIFs (fetched via Claude-in-Chrome).
 - Check the cleaned-up CT narration transcripts on the page against the audio (tidied 2026-11-17).
 - Done: repo created and pushed 2026-11-17 (public dev repo, as approved).
 - Run [CHECKLIST.md](CHECKLIST.md) on a Windows and a Mac laptop.
