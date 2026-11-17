@@ -1,6 +1,6 @@
 # Porting plan: The Joy of Convolution → modern browser (HTML5)
 
-Status: **planning** (2026-11-17). Background facts: [RESEARCH.md](RESEARCH.md). Later work: [BACKLOG.md](BACKLOG.md).
+Status: **Phase 1 first port done** (2026-11-17; see CLAUDE.md "Status"). Background facts: [RESEARCH.md](RESEARCH.md). Later work: [BACKLOG.md](BACKLOG.md).
 
 ## Goal
 Bring Steven Crutchfield's *Joy of Convolution* applets (Johns Hopkins University, 1996/1997,
@@ -78,7 +78,7 @@ the MP3 links, the applet, the quiz, and credits.
    total). Claude cleans up the math wording, then Jon listens once and checks the transcript
    against the audio.
 
-### Phase 1: CT port, faithful
+### Phase 1: CT port, faithful (first port done 2026-11-17; hands-on check pending)
 - **Geometry:** the same 480×600 applet layout, with panel rectangles measured from the
   appletviewer screenshot. Drawn on canvases at that logical size, sharp on high-DPI screens, with
   the whole applet scaled to a readable size on a 1080p laptop (the sibling sim's "stage" idea).
@@ -94,9 +94,9 @@ the MP3 links, the applet, the quiz, and credits.
   lower panels; the equation in the y panel; colors (blue x, red h, green "decay" button);
   no time-axis numbers (the original has none).
 - **Input:** Pointer Events, so mouse, pen and touch all work without extra code.
-- **Known deliberate deviations** (log each in CLAUDE.md as it's made): floating point
-  instead of int truncation (the difference is under a pixel); fonts are the browser's sans-serif,
-  close to the original but not pixel-identical.
+- **Known deliberate deviations** are logged in [QUIRKS.md](QUIRKS.md). Changed from this plan:
+  the port keeps the original's **int truncation exactly** (not floats), which made bit-exact
+  tests against the original's arrays possible. Fonts are the browser's Arial.
 - Anything in the original that looks like a bug: **keep it** and list it for Jon and the course professor.
   Don't fix it silently.
 
@@ -145,5 +145,6 @@ Header line, e.g.: *"The Joy of Convolution" by Steven Crutchfield, Johns Hopkin
 
 ## Open items for Jon
 - Done: files saved (2026-11-17). **Still needed:** the 10 DT button GIFs in DOWNLOAD_LIST.md section 5.
-- Check the cleaned-up narration transcripts against the audio (once Claude has tidied them in Phase 1).
-- Repo name `Joy-of-Convolution-Sim` is confirmed, for when git returns.
+- Check the cleaned-up CT narration transcripts on the page against the audio (tidied 2026-11-17).
+- Done: repo created and pushed 2026-11-17 (public dev repo, as approved).
+- Run [CHECKLIST.md](CHECKLIST.md) on a Windows and a Mac laptop.

@@ -17,9 +17,21 @@
 
 ## Status
 
-Phase 1 (continuous-time port) is in progress. Nothing here is ready to run or to hand to
-students yet. This README will be replaced with run instructions and screenshots once the
-first port is validated and permission is in hand.
+- **Continuous time:** a first faithful port is done (`joy_of_convolution.html`) and is
+  waiting for hands-on checks ([CHECKLIST.md](CHECKLIST.md)). Its arithmetic matches the original applet's
+  bit for bit in scripted tests; what differs on purpose is listed in [QUIRKS.md](QUIRKS.md).
+- **Discrete time:** not started.
+
+![The continuous-time port, part way through convolving a double pulse with a decaying exponential](docs/ct-port.png)
+
+To try it during development: download or clone the repository and double-click
+`joy_of_convolution.html`. It is a single file with nothing to install and no network access.
+
+Tests (Python 3, standard library only; the browser tests use Chrome or Edge if installed):
+
+```
+py -m unittest discover -s tests -v
+```
 
 ## Credits
 

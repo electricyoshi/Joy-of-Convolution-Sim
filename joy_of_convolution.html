@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Joy of Convolution</title>
+<!--
+  Browser port of "The Joy of Convolution", the Java applet by Steven Crutchfield
+  (Johns Hopkins University, Fall 1996), part of the JHU Signals, Systems, and Control
+  Demonstrations directed by Wilson J. Rugh. The original page and applet are
+  (c) 1995-2003 Johns Hopkins University and Wilson J. Rugh. Work in progress; see README.md.
+
+  One self-contained file: no libraries, no network, runs from file://.
+  The applet is a transcription of Convolve.java, class by class with the same names
+  (Signal, ConvSignal, SigPanel, MouseSigPanel, SigButton, ConvSigPanel, ConvPanel,
+  Convolve), so it can be read side by side with the original. Its integer arithmetic
+  is kept exactly, so tests compare its arrays with the original's bit for bit.
+  Hash modes (used by tests/ and tools/): #selftest, #shot=<scenario>:<step>.
+-->
+<style>
+  /* Page colours from the original page: body #F0F0F0, the applet in a table cell
+     bgcolor #C0C0C0 with border=2, credits box #E0E0E0. */
+  body { background: #F0F0F0; color: #000; margin: 0; font-family: "Times New Roman", Times, serif; font-size: 16px; line-height: 1.3; }
+  #page { max-width: 52em; margin: 0 auto; padding: 0 12px 24px; }
+  #credit-bar { background: #E0E0E0; border-bottom: 1px solid #C0C0C0; font: 14px Arial, Helvetica, sans-serif; padding: 6px 12px; text-align: center; }
+  #credit-bar .wip { color: #8A2B00; font-weight: bold; }
+  .banner { margin: 18px 0 30px; font-weight: normal; font-size: 26px; letter-spacing: 0.5px; position: relative; display: inline-block; padding: 0 0 6px 14px; }
+  .banner svg { position: absolute; left: 0; bottom: -4px; width: 405px; max-width: 90vw; height: 14px; }
+  summary { cursor: pointer; font-weight: bold; font-size: 1.2em; color: #0000EE; }
+  summary .hint { font-weight: normal; font-size: 0.75em; color: #333; }
+  details { margin: 0 0 1em; }
+  details > div { background: #FAFAFA; border: 1px solid #D0D0D0; padding: 6px 14px; margin-top: 6px; }
+  .draft { font: 13px Arial, Helvetica, sans-serif; color: #8A2B00; }
+  math[display="block"] { margin: 0.6em 0; font-size: 1.3em; }
+  #frame { display: table; margin: 1em auto; background: #C0C0C0; border: 2px outset #E0E0E0; padding: 1px; }
+  /* The applet: 480 x 600 logical px, scaled as a whole by fit() (z). Every child is
+     placed at its AWT bounds times z. */
+  #applet { position: relative; background: #FFFFFF; overflow: hidden; touch-action: none;
+            -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  #applet canvas, #applet button, #applet .awtlabel { position: absolute; display: block; }
+  #applet button { padding: 0; margin: 0; border: 0; background: #FFFFFF; cursor: pointer; }
+  #applet button canvas { position: static; width: 100%; height: 100%; }
+  #applet button:focus { outline: none; }
+  #applet button:focus-visible { outline: 2px solid #1A73E8; outline-offset: 1px; }
+  #applet .awtlabel { font-family: Arial, Helvetica, sans-serif; white-space: nowrap; color: #000; }
+  .cv-draw { cursor: crosshair; }
+  .quiz ol > li { margin-bottom: 0.8em; }
+  .quiz ul { list-style: circle; margin: 0.2em 0; }
+  .return { text-align: center; margin: 2em 0 1.5em; }
+  #credits { background: #E0E0E0; padding: 8px 16px; margin: 0 auto; max-width: 40em; font-size: 14px; }
+  #credits h2 { font-size: 16px; margin: 6px 0; }
+  #credits ul { margin: 4px 0 8px; padding-left: 20px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  /* #shot mode: only the applet, unscaled, at the top left, for pixel comparisons
+     with the original's captures (tools/compare_ct.py). */
+  html.bare body { background: #FFFFFF; }
+  html.bare #credit-bar, html.bare #page > :not(#frame), html.bare #page { padding: 0; margin: 0; }
+  html.bare #credit-bar, html.bare #page > :not(#frame) { display: none; }
+  html.bare #frame { margin: 0; border: 0; padding: 0; }
+</style>
+</head>
+<body>
+<div id="err" role="alert" style="display:none;position:fixed;left:0;right:0;top:0;z-index:9;padding:10px 14px;background:#B84300;color:#FFFFFF;font:bold 16px Arial, Helvetica, sans-serif"></div>
+
+<div id="credit-bar">
+  <i>The Joy of Convolution</i> by Steven Crutchfield, Johns Hopkins University (1996).
+  Restored for modern browsers, 2026. <a href="#credits">Credits</a>
+  <br><span class="wip">Work in progress: not for classroom use yet. Permission from the original authors is being sought.</span>
+</div>
+
+<div id="page">
+<h1 class="banner">joy of convolution
+  <svg viewBox="0 0 405 14" preserveAspectRatio="none" aria-hidden="true"><path d="M0 13 L28 6 Q120 4 405 1 L405 3 Q140 7 40 13 Z" fill="#3333CC"/></svg>
+</h1>
+
+<details id="welcome">
+  <summary>Welcome! <span class="hint">(narration as text)</span></summary>
+  <div>
+    <p class="draft">Draft transcript of the original audio narration by Cherie Weinert. Not yet checked against the recording.</p>
+    <p>Welcome to the world of continuous-time, linear time-invariant systems, and the convolution
+    representation. I will briefly describe this representation and the use of the Java applet below.</p>
+    <p>For a linear time-invariant system, the output signal, <i>y</i>(<i>t</i>), is related to the input
+    signal, <i>x</i>(<i>t</i>), by the convolution integral. The signal <i>h</i>(<i>t</i>) in the integrand
+    characterizes the behavior of the system. As will be discussed later, <i>h</i>(<i>t</i>) is the system
+    response to the unit impulse input signal.</p>
+    <p>To explore convolution using the applet, position the page so that all four layers of windows are
+    visible. Select <i>x</i>(<i>t</i>) and <i>h</i>(<i>t</i>) from the provided signals, or use your mouse
+    to sketch desired signals. Then click on the first <i>v</i>-axis, where <i>v</i> is the integration
+    variable in the convolution expression. This displays the signals <i>h</i>(<i>v</i>) and
+    <i>x</i>(<i>t</i>&nbsp;&minus;&nbsp;<i>v</i>) in the integrand, with the value of <i>t</i> set by your
+    click. The corresponding product of signals in the integrand, and the resulting value of
+    <i>y</i>(<i>t</i>), are displayed in the last two windows. As you drag the value of <i>t</i> with the
+    mouse, the integrand and the output signal are shown.</p>
+    <p>This is a good time to explore the applet. In the next audio link, I will provide a few exercises.</p>
+  </div>
+</details>
+
+<p>The behavior of a linear, continuous-time, time-invariant system with input signal <i>x(t)</i> and
+output signal <i>y(t)</i> is described by the <i>convolution</i> integral</p>
+<math display="block" aria-label="y of t equals the integral from minus infinity to infinity of h of v times x of t minus v, d v">
+  <mrow><mi>y</mi><mo stretchy="false">(</mo><mi>t</mi><mo stretchy="false">)</mo><mo>=</mo>
+  <msubsup><mo>&#x222B;</mo><mrow><mo>&#x2212;</mo><mi>&#x221E;</mi></mrow><mi>&#x221E;</mi></msubsup>
+  <mi>h</mi><mo stretchy="false">(</mo><mi>v</mi><mo stretchy="false">)</mo>
+  <mi>x</mi><mo stretchy="false">(</mo><mi>t</mi><mo>&#x2212;</mo><mi>v</mi><mo stretchy="false">)</mo>
+  <mspace width="0.17em"></mspace><mi>d</mi><mi>v</mi></mrow>
+</math>
+<p>The signal <i>h(t)</i>, assumed known, is the response of the system to a unit impulse input.</p>
+<p>To compute the output <i>y(t)</i> at a specified <i>t</i>, first the integrand <i>h(v)x(t - v)</i> is
+computed as a function of <i>v</i>. Then integration with respect to <i>v</i> is performed, resulting in
+<i>y(t)</i>.</p>
+<p>These mathematical operations have simple graphical interpretations. First, plot <i>h(v)</i> and the
+"flipped and shifted" <i>x(t - v)</i> on the <i>v</i> axis, where <i>t</i> is fixed. Second, multiply the
+two signals and compute the signed area of the resulting function of <i>v</i> to obtain <i>y(t)</i>. These
+operations can be repeated for every value of <i>t</i> of interest.</p>
+<p>To explore graphical convolution, select signals <i>x(t)</i> and <i>h(t)</i> from the provided examples
+below, or use the mouse to draw your own signal or to modify a selected signal. Then click at a desired
+value of <i>t</i> on the first <i>v</i> axis. After a moment, <i>h(v)</i> and <i>x(t - v)</i> will appear.
+Drag the <i>t</i> symbol along the <i>v</i> axis to change the value of <i>t</i>. For each <i>t</i>, the
+corresponding integrand <i>h(v)x(t - v)</i> and the output value <i>y(t)</i> will be displayed in their
+respective windows.</p>
+
+<details id="exercises">
+  <summary>Exercises <span class="hint">(narration as text)</span></summary>
+  <div>
+    <p class="draft">Draft transcript of the original audio narration by Cherie Weinert. Not yet checked
+    against the recording.</p>
+    <p>As a first exercise, investigate the claim that <i>h</i>(<i>t</i>) is the response of the system to a
+    unit impulse input. This feature of <i>h</i>(<i>t</i>) means that if the response of a linear
+    time-invariant system to the unit impulse input is known, then convolution can be used to compute the
+    response to any input signal. Of course, you cannot sketch a unit impulse for <i>x</i>(<i>t</i>), but you
+    can approximate an impulse by a tall, thin pulse. The area of the approximate impulse will not be 1
+    because of the limited window size. Therefore, the output signal will be an approximation to
+    <i>h</i>(<i>t</i>) that is scaled by a small constant.</p>
+    <p>You can pause the audio while working on the exercises.</p>
+    <p>For the second exercise, recall that a causal system is a system with the property that the output
+    signal at time <i>t</i> depends only on input signal values for times less than or equal to <i>t</i>. By
+    trying some examples, you should verify with the applet that a causal system corresponds to an impulse
+    response <i>h</i>(<i>t</i>) that is zero for negative values of <i>t</i>. In other words, a causal system
+    corresponds to a one-sided impulse response.</p>
+    <p>Next, consider the effect of interchanging <i>h</i>(<i>t</i>) and <i>x</i>(<i>t</i>). It should be
+    readily apparent that the output of a system with the impulse response <i>x</i>(<i>t</i>) and input
+    <i>h</i>(<i>t</i>) is the same as the output of a system with the impulse response <i>h</i>(<i>t</i>) and
+    input <i>x</i>(<i>t</i>). In other words, convolution is a commutative operation.</p>
+    <p>The fourth exercise is to describe the relationship between a system with impulse response
+    <i>h</i>(<i>t</i>) and a system with impulse response <i>h</i>(<i>t</i>&nbsp;&minus;&nbsp;<i>T</i>),
+    where <i>T</i> is a constant.</p>
+    <p>Exercise 5 involves understanding how a linear time-invariant system can act as a low-pass filter.
+    Select the decaying exponential for <i>h</i>(<i>t</i>), or draw something similar. Then sketch input
+    signals that oscillate rapidly and perform the convolutions. Notice that the output signals have smaller
+    amplitude and oscillate less than the input signals. The system filters out some of the high-frequency
+    content in the input signal.</p>
+    <p>The last exercise is to sketch a simple unit impulse response so that the system acts as a high-pass
+    filter. You probably will find this very difficult to do, and you may want to consider this as motivation
+    for further study of frequency-selective filtering.</p>
+  </div>
+</details>
+
+<div id="frame"><div id="applet" role="application" aria-label="The Joy of Convolution applet"></div></div>
+<p id="readout" class="sr-only" aria-live="polite"></p>
+
+<details id="quiz" class="quiz">
+  <summary>Quiz</summary>
+  <div>
+    <h2 style="font-size:1.1em;text-align:center">Quiz on Continuous-Time Convolution</h2>
+    <p><i>A companion to Joy of Convolution. It is recommended that you use the applet to explore the
+    question, and then see if you can mathematically justify your conclusion.</i></p>
+    <ol>
+      <li>If the unit-impulse response of an LTI system and the input signal both are rectangular pulses,
+        then the output will be a
+        <ul><li>rectangular pulse</li><li>triangular pulse</li><li>ramp function</li><li>none of the above</li></ul></li>
+      <li>If <i>h</i>(<i>t</i>) is a unit-step function and <i>x</i>(<i>t</i>) is a unit-ramp function, then
+        the output <i>y</i>(<i>t</i>) will be a
+        <ul><li>step function</li><li>ramp function</li><li>triangular pulse</li><li>quadratic function</li></ul></li>
+      <li>If an input signal is applied to two LTI systems with respective unit-impulse responses
+        <i>h</i>(<i>t</i>) and 3<i>h</i>(<i>t</i>&nbsp;&minus;&nbsp;2), then the response of the second
+        system is the response of the first
+        <ul><li>amplitude scaled by 3 and delayed by 2</li><li>amplitude scaled by 3 and advanced by 2</li>
+        <li>amplitude scaled by 3</li><li>none of the above</li></ul></li>
+      <li>If <i>h</i>(<i>t</i>) = 2&thinsp;sin(<i>&omega;t</i>)&thinsp;<i>u</i>(<i>t</i>), where
+        <i>u</i>(<i>t</i>) is the unit-step function and <i>&omega;</i> is large, then the behavior of the
+        system is such that
+        <ul><li>low frequency input signals are attenuated</li><li>low frequency input signals are amplified</li>
+        <li>high frequency signals are amplified</li><li>the response to a unit-step input is identically zero</li></ul></li>
+      <li>If <i>x</i>(<i>t</i>) = <i>h</i>(&minus;<i>t</i>), then
+        <ul><li><i>y</i>(<i>t</i>) = 2<i>h</i>(<i>t</i>)</li><li><i>y</i>(<i>t</i>) = <i>y</i>(&minus;<i>t</i>)</li>
+        <li><i>y</i>(<i>t</i>) = &minus;<i>y</i>(&minus;<i>t</i>)</li>
+        <li>the largest value of <i>y</i>(<i>t</i>) occurs at <i>t</i> = 0</li></ul></li>
+    </ol>
+  </div>
+</details>
+
+<p class="return"><a href="https://pages.jh.edu/signals/index.html">&larr; return to demonstrations page</a>
+  <br><small>(the original Johns Hopkins demonstrations index)</small></p>
+
+<section id="credits" aria-labelledby="credits-h">
+  <p style="text-align:center;margin:4px 0 10px">Applet by Steve Crutchfield</p>
+  <h2 id="credits-h">Credits</h2>
+  <ul>
+    <li><i>The Joy of Convolution</i> applet: <b>Steven Crutchfield</b>, Johns Hopkins University, Fall 1996.</li>
+    <li>Discrete-time version: Steven Crutchfield, Summer 1997; updated by <b>Michael Ross</b>, Fall 2001.</li>
+    <li>Part of the Johns Hopkins University <i>Signals, Systems, and Control Demonstrations</i>, directed by
+      <b>Wilson J. Rugh</b>, 1994&ndash;2003.</li>
+    <li>Narration: <b>Cherie Weinert</b>. Site page design: <b>Mark Nesky</b>.</li>
+    <li>Supported by the National Science Foundation, the Kenan Fund, the Johns Hopkins Center for
+      Educational Resources, and the E. J. Schaefer Chair. Premier Engineering Courseware of 2001.</li>
+    <li>Original site: <a href="https://pages.jh.edu/signals/">https://pages.jh.edu/signals/</a></li>
+  </ul>
+  <p>Original page, applet, narration and quiz &copy; 1995&ndash;2003 Johns Hopkins University and Wilson J.
+  Rugh, all rights reserved. This browser port was made by electricyoshi for a Seattle Pacific University
+  course. It is not endorsed by or affiliated with Johns Hopkins University or the original authors.</p>
+</section>
+</div>
+
+<pre id="selftest-out" hidden></pre>
+
+<script>
+// If the main script fails (an old browser that can't parse it, or an error), say so on the
+// page instead of leaving a silently dead applet. A separate script, so that a syntax error
+// in the main one can't stop this from being installed.
+window.onerror = function (msg, src, line) {
+  var d = document.getElementById('err');
+  d.textContent = 'This page hit an error (' + msg + ', line ' + line + '). Try a current version of Chrome, Edge, Firefox or Safari.';
+  d.style.display = 'block';
+};
+</script>
+<script>
+'use strict';
+
+// ---------------------------------------------------------------------------------------
+// Java helpers. The original stores every signal as int pixels; keeping Java's integer
+// semantics here is what makes the port's arrays identical to the original's.
+// ---------------------------------------------------------------------------------------
+function idiv(a, b) { return Math.trunc(a / b); }   // Java int '/' truncates toward zero
+var toInt = Math.trunc;                              // Java (int) cast of a double
+
+// java.awt.Color constants used by the original
+var Color = { white: '#FFFFFF', black: '#000000', blue: '#0000FF', red: '#FF0000',
+              lightGray: '#C0C0C0', green128: '#008000' };   // new Color(0, 128, 0)
+// AWT's default "Dialog" 12 maps to Arial on Windows, which is what the original showed.
+var FONT = '12px Arial, Helvetica, sans-serif';
+
+// A tiny java.awt.Graphics stand-in over a canvas 2D context in applet pixels. drawLine
+// strokes the pixel centres with square caps, so a line covers both end pixels like
+// Java's. Consecutive lines of one colour are batched into one path (thousands of
+// segments are drawn per drag event).
+function Graphics(ctx, background) {
+  this.c = ctx; this.bg = background; this.pending = false;
+  ctx.lineWidth = 1; ctx.lineCap = 'square'; ctx.font = FONT; ctx.textBaseline = 'alphabetic';
+  this.setColor(Color.black);
+}
+Graphics.prototype.flush = function () { if (this.pending) { this.c.stroke(); this.pending = false; } };
+Graphics.prototype.setColor = function (col) {
+  this.flush(); this.color = col; this.c.strokeStyle = col; this.c.fillStyle = col;
+};
+Graphics.prototype.drawLine = function (x1, y1, x2, y2) {
+  var c = this.c;
+  if (!this.pending) { c.beginPath(); this.pending = true; }
+  c.moveTo(x1 + 0.5, y1 + 0.5); c.lineTo(x2 + 0.5, y2 + 0.5);
+};
+Graphics.prototype.drawString = function (s, x, y) { this.flush(); this.c.fillText(s, x, y); };
+Graphics.prototype.fillOval = function (x, y, w, h) {
+  this.flush(); var c = this.c;
+  c.beginPath(); c.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, 2 * Math.PI); c.fill();
+};
+Graphics.prototype.clearRect = function (x, y, w, h) {
+  this.flush(); this.c.fillStyle = this.bg; this.c.fillRect(x, y, w, h); this.c.fillStyle = this.color;
+};
+
+// ---------------------------------------------------------------------------------------
+// class Signal (Convolve.java): one panel's samples, one per pixel column, in int pixels.
+// ---------------------------------------------------------------------------------------
+class Signal {
+  constructor(name, label, width, height, color, drawTicks) {
+    this.fName = name;
+    this.fLabel = label;
+    this.fSigLength = width;
+    this.fAmplitude = idiv(height, 2);
+    this.fDrawTicks = drawTicks;
+    this.x = new Array(this.fSigLength);
+    this.fColor = color;
+    this.zero();
+  }
+  getLength() { return this.fSigLength; }
+  getValue(i) {
+    if (i < 0 || i >= this.fSigLength) return 0;
+    else return this.x[i];
+  }
+  values() { return this.x; }
+  zero() { for (var i = 0; i < this.fSigLength; i++) this.x[i] = 0; }
+  doDoublePulse() {
+    this.zero();
+    var N = this.fSigLength, A = this.fAmplitude, i;
+    for (i = idiv(N, 2); i < idiv(N * 3, 4); i++) this.x[i] = -idiv(A, 2);
+    // The second half stops at N - 1: the last sample stays 0 (as in the original).
+    for (i = idiv(N * 3, 4); i < N - 1; i++) this.x[i] = idiv(A, 2);
+  }
+  doPulse() {
+    this.zero();
+    var N = this.fSigLength;
+    for (var i = idiv(N, 2); i < idiv(3 * N, 4); i++) this.x[i] = idiv(this.fAmplitude, 2);
+  }
+  doDecay() {
+    this.zero();
+    var N = this.fSigLength;
+    for (var i = idiv(N, 2); i < N; i++)
+      this.x[i] = toInt(Math.exp(-4.0 * (i - idiv(N, 2)) / N) * this.fAmplitude / 2);
+  }
+  Draw(g) { this.DrawWithScale(g, 1.0, this.fAmplitude); }
+  // Axes, the +1/-1 ticks, the name and axis label, then the samples as joined lines.
+  // Zero samples are drawn too: an empty signal is a coloured line along the axis.
+  drawAxes(g) {
+    var N = this.fSigLength, A = this.fAmplitude;
+    g.setColor(Color.lightGray);
+    g.drawLine(0, A, N, A);
+    g.drawLine(idiv(N, 2), 0, idiv(N, 2), A * 2);
+    var tickOffset = idiv(A, 2);
+    if (this.fDrawTicks) {
+      var yOff = tickOffset, count = 1;
+      g.drawLine(idiv(N, 2) - 2, A - yOff, idiv(N, 2) + 2, A - yOff);
+      g.drawLine(idiv(N, 2) - 2, A + yOff, idiv(N, 2) + 2, A + yOff);
+      g.drawString('+' + count, idiv(N, 2) + 5, A - yOff + 5);
+      g.drawString('-' + count, idiv(N, 2) + 5, A + yOff + 5);
+    }
+    g.setColor(Color.black);
+    if (this.fDrawTicks) {
+      g.drawString(this.fName, 5, 15);
+      g.drawString(this.fLabel, N - 10, A + 10);
+    }
+  }
+  DrawWithScale(g, scale, windowHeight) {
+    this.drawAxes(g);
+    g.setColor(this.fColor);
+    var A = this.fAmplitude, x = this.x;
+    for (var i = 1; i < this.fSigLength; i++)
+      g.drawLine(i - 1, A - toInt(scale * x[i - 1]), i, A - toInt(scale * x[i]));
+  }
+  // Mouse edits: the first and last samples can't be changed.
+  Modify(i, y) {
+    if (i > 0 && i < this.fSigLength - 1) this.x[i] = this.fAmplitude - y;
+  }
+  set(newSig) { this.x = newSig; }
+  setValue(i, y) {
+    if (i > 0 && i < this.fSigLength - 1) this.x[i] = y;
+  }
+  // Straight line from the previous mouse position to this one (Java int arithmetic).
+  // Values are not clamped: dragging above or below the panel stores off-scale samples.
+  Drag(oldI, oldY, i, y) {
+    if (i === oldI) return;
+    var temp;
+    if (oldI > i) {
+      temp = oldI; oldI = i; i = temp;
+      temp = oldY; oldY = y; y = temp;
+    }
+    for (var currI = oldI; currI <= i; currI++)
+      if (currI > 0 && currI < this.fSigLength - 1)
+        this.x[currI] = this.fAmplitude - (oldY + idiv((y - oldY) * (currI - oldI), i - oldI));
+  }
+}
+
+// class ConvSignal: y(t). Values exist for every t once computed, but only the t values the
+// user has visited ("shown") are drawn.
+class ConvSignal extends Signal {
+  constructor(name, width, height, color) {
+    super(name, 't', width, height, color, true);
+    this.shown = new Array(this.fSigLength).fill(false);
+  }
+  show(i) { this.shown[i] = true; }
+  zero() {
+    super.zero();
+    this.shown = new Array(this.fSigLength).fill(false);
+  }
+  set(newSig) {
+    super.set(newSig);
+    this.shown = new Array(this.fSigLength).fill(false);   // reset 'shown' array
+  }
+  DrawWithScale(g, scale, windowHeight) {
+    this.drawAxes(g);
+    g.setColor(this.fColor);
+    var A = this.fAmplitude, x = this.x, shown = this.shown;
+    for (var i = 1; i < this.fSigLength; i++)
+      if (shown[i - 1] && shown[i])
+        g.drawLine(i - 1, A - toInt(scale * x[i - 1]), i, A - toInt(scale * x[i]));
+  }
+}
+
+// ---------------------------------------------------------------------------------------
+// Components. Each AWT Panel becomes a canvas at its bounds inside the applet. The bounds
+// are the GridBag result measured from the running original (reference/captures/ct/
+// geometry.txt, RESEARCH.md), hard-coded rather than re-implementing GridBagLayout.
+// ---------------------------------------------------------------------------------------
+var dirty = [], rafPending = false;
+class Component {
+  constructor(bounds, el) {
+    this.bx = bounds[0]; this.by = bounds[1]; this.bw = bounds[2]; this.bh = bounds[3];
+    this.el = el || document.createElement('canvas');
+    this.canvas = this.el.tagName === 'CANVAS' ? this.el : this.el.querySelector('canvas');
+  }
+  width() { return this.bw; }
+  height() { return this.bh; }
+  place(z, dpr) {
+    var s = this.el.style;
+    s.left = (this.bx * z) + 'px'; s.top = (this.by * z) + 'px';
+    s.width = (this.bw * z) + 'px'; s.height = (this.bh * z) + 'px';
+    this.canvas.width = Math.max(1, Math.round(this.bw * z * dpr));
+    this.canvas.height = Math.max(1, Math.round(this.bh * z * dpr));
+  }
+  paintNow() {
+    var c = this.canvas.getContext('2d');
+    c.setTransform(this.canvas.width / this.bw, 0, 0, this.canvas.height / this.bh, 0, 0);
+    var g = new Graphics(c, Color.white);
+    g.clearRect(0, 0, this.bw, this.bh);
+    this.paint(g);
+    g.flush();
+    this.painted = true;
+  }
+  // AWT repaint() is asynchronous and coalesced; so is this.
+  repaint() {
+    if (dirty.indexOf(this) < 0) dirty.push(this);
+    if (!rafPending) { rafPending = true; requestAnimationFrame(flushRepaints); }
+  }
+}
+function flushRepaints() {
+  rafPending = false;
+  var list = dirty; dirty = [];
+  for (var i = 0; i < list.length; i++) list[i].paintNow();
+  if (window.JOC && JOC.applet) JOC.applet.announce();
+}
+
+// class SigPanel: draws one Signal.
+class SigPanel extends Component {
+  constructor(bounds, name, label, color, drawTicks, el) {
+    super(bounds, el);
+    this.fName = name; this.fLabel = label; this.fColor = color; this.fDrawTicks = drawTicks;
+    // The original creates its Signal on the first paint(), when the size is known;
+    // here the size is known up front.
+    this.signal = new Signal(name, label, this.width(), this.height(), color, drawTicks);
+  }
+  paint(g) { this.signal.Draw(g); }
+  getSignal() { return this.signal; }
+  doPulse() { this.signal.doPulse(); this.repaint(); }
+  doDoublePulse() { this.signal.doDoublePulse(); this.repaint(); }
+  doDecay() { this.signal.doDecay(); this.repaint(); }
+  setSignal(newSig) { this.signal.set(newSig); this.repaint(); }
+  clear() { this.signal.zero(); this.repaint(); }   // the user clicked the "Clear" button
+}
+
+// class SigButton: a preset button is a tiny SigPanel showing its own signal shape.
+class SigButton extends SigPanel {
+  constructor(bounds, name, color, panel, applet, el) {
+    super(bounds, name, '', color, false, el);
+    this.fSigPanel = panel;
+    this.fApplet = applet;
+    if (name === 'pulse') this.signal.doPulse();
+    else if (name === 'decay') this.signal.doDecay();
+    else if (name === 'double pulse') this.signal.doDoublePulse();
+  }
+  mouseDown() {
+    var n = this.fName;
+    if (n === 'pulse') this.fSigPanel.doPulse();
+    else if (n === 'decay') this.fSigPanel.doDecay();
+    else if (n === 'double pulse') this.fSigPanel.doDoublePulse();
+    else if (n === 'clear') this.fSigPanel.clear();
+    this.fApplet.sigChanged();
+    return true;
+  }
+}
+
+// class MouseSigPanel: x(t) or h(t), drawn with the mouse.
+class MouseSigPanel extends SigPanel {
+  constructor(bounds, name, label, color, applet) {
+    super(bounds, name, label, color, true);
+    this.fApplet = applet;
+    this.prevX = 0; this.prevY = 0;
+  }
+  mouseDown(x, y) {
+    this.signal.Modify(x, y);
+    this.prevX = x; this.prevY = y;
+    this.repaint();
+    this.fApplet.sigChanged();
+    return true;
+  }
+  mouseDrag(x, y) {
+    this.signal.Drag(this.prevX, this.prevY, x, y);
+    this.prevX = x; this.prevY = y;
+    this.repaint();
+    this.fApplet.sigChanged();
+    return true;
+  }
+}
+
+// class ConvSigPanel: y(t), with the convolution integral in the top-left corner and a dot
+// at the current (t, y(t)).
+class ConvSigPanel extends SigPanel {
+  constructor(bounds, name, color, applet) {
+    super(bounds, name, '', color, true);
+    this.fApplet = applet;
+    this.fSetPoint = -1;
+    this.signal = new ConvSignal(name, this.width(), this.height(), color);
+  }
+  paint(g) {
+    drawEquation(g.c);   // the original draws its equation image here
+    var scale = this.height() / 2 / this.fApplet.getConvPanel().fAmplitude;
+    this.signal.DrawWithScale(g, scale, this.height());
+    if (this.fSetPoint !== -1)
+      g.fillOval(this.fSetPoint - 3,
+        toInt(-this.signal.getValue(this.fSetPoint) * scale) - 3 + idiv(this.height(), 2), 7, 7);
+  }
+  clear() { this.fSetPoint = -1; super.clear(); }
+  setAndRepaint(i) { this.set(i); this.repaint(); }
+  set(i) { this.fSetPoint = i; this.signal.show(i); }
+}
+
+// The equation image (149 x 49 at the panel's top-left) is redrawn as text so
+// that no JHU image is needed: y(t) = integral from -inf to inf of h(v) x(t - v) dv.
+function drawEquation(c) {
+  c.save();
+  c.fillStyle = Color.black;
+  var it = 'italic 16px "Times New Roman", Times, serif', up = '16px "Times New Roman", Times, serif';
+  c.font = it; c.fillText('y', 5, 33); c.fillText('t', 19, 33);
+  c.font = up; c.fillText('(', 14, 33); c.fillText(')', 24, 33); c.fillText('=', 31, 33);
+  c.font = '26px "Times New Roman", Times, serif'; c.fillText('∫', 47, 37);
+  c.font = '10px "Times New Roman", Times, serif';
+  c.fillText('∞', 50, 9); c.fillText('−∞', 46, 47);
+  var x = 58, parts = [['h', it], ['(', up], ['v', it], [')', up], ['x', it], ['(', up], ['t', it],
+    [' − ', up], ['v', it], [')', up], ['d', it], ['v', it]];
+  for (var i = 0; i < parts.length; i++) {
+    c.font = parts[i][1]; c.fillText(parts[i][0], x, 33);
+    x += c.measureText(parts[i][0]).width + (i === 9 ? 2 : 0.6);
+  }
+  c.restore();
+}
+
+// class ConvPanel: "x(t - v) and h(v)". h(v) fixed in red, the flipped x(t - v) in blue slid
+// to the current t. Click sets t, drag moves it. The first click after any change to x or
+// h computes the whole y(t) (a Riemann sum) and the integrand at t.
+class ConvPanel extends Component {
+  constructor(bounds, xPanel, hPanel, intPanel, yPanel) {
+    super(bounds);
+    this.fXPanel = xPanel; this.fHPanel = hPanel; this.fIntPanel = intPanel; this.fYPanel = yPanel;
+    this.fSigChanged = true;
+    this.fSigLength = this.width();
+    this.fAmplitude = idiv(this.height(), 2);
+    this.fScale = 2.0 / this.fAmplitude;
+    this.fT = 0; this.fPrevX = 0; this.fOffset = 0;
+    this.fX = null; this.fH = null; this.fY = null;
+  }
+  sigChanged() {
+    if (!this.fSigChanged) {
+      this.fYPanel.clear();
+      this.fIntPanel.clear();
+      this.repaint();   // (the original also clears its offscreen images here)
+    }
+    this.fSigChanged = true;
+  }
+  // The original keeps h and the flipped x in two offscreen images, redrawn only in
+  // updateSignal() and wiped whenever x or h changes. Whenever fSigChanged is false those
+  // images match the current signals, so drawing the signals directly is equivalent.
+  paint(g) {
+    var N = this.fSigLength, A = this.fAmplitude, i;
+    // clear(): the h image's axes and labels
+    g.setColor(Color.lightGray);
+    g.drawLine(0, A, N, A);
+    g.drawLine(idiv(N, 2), 0, idiv(N, 2), A * 2);
+    g.drawLine(idiv(N, 2) - 2, idiv(A, 2), idiv(N, 2) + 2, idiv(A, 2));
+    g.drawLine(idiv(N, 2) - 2, idiv(3 * A, 2), idiv(N, 2) + 2, idiv(3 * A, 2));
+    g.drawString('+1', idiv(N, 2) + 5, idiv(A, 2) + 5);
+    g.drawString('-1', idiv(N, 2) + 5, idiv(A * 3, 2) + 5);
+    g.setColor(Color.black);
+    g.drawString('x(t - v) and h(v)', 5, 15);
+    g.drawString('v', N - 10, A + 10);
+    if (this.fSigChanged) return;   // don't draw if signals are being modified
+
+    var fH = this.fH, fX = this.fX, off = this.fOffset;
+    // updateSignal(): h(v) where it is nonzero
+    g.setColor(Color.red);
+    for (i = 1; i < N; i++)
+      if (fH.getValue(i - 1) !== 0 || fH.getValue(i) !== 0)
+        g.drawLine(off + i - 1, A - fH.getValue(i - 1), off + i, A - fH.getValue(i));
+    // the flipped x image, pasted at fT - fSigLength
+    var dx = this.fT - N;
+    g.setColor(Color.blue);
+    for (i = 1; i < N; i++)
+      if (fX.getValue(i - 1) !== 0 || fX.getValue(i) !== 0)
+        g.drawLine(dx - off + N - (i - 1), A - fX.getValue(i - 1), dx - off + N - i, A - fX.getValue(i));
+    // the "t" marker under the sliding x image
+    g.setColor(Color.lightGray);
+    g.drawLine(dx + idiv(N, 2), A - 2, dx + idiv(N, 2), A + 2);
+    g.setColor(Color.black);
+    g.drawString('t', dx + idiv(N, 2) + 4, A + 10);
+  }
+  updateSignal() {
+    this.fX = this.fXPanel.getSignal();
+    this.fH = this.fHPanel.getSignal();
+    this.fY = this.fYPanel.getSignal();
+    var N = this.fSigLength, fX = this.fX, fH = this.fH;
+    this.fOffset = idiv(N - fH.getLength(), 2);
+    var off = this.fOffset;
+    // Calculate y(t) = x(t) * h(t)
+    var y = new Array(N);
+    var dx = 2 * Math.PI / N;
+    for (var t = 0; t < N; t++) {
+      var area = 0;
+      for (var s = 0; s < N; s++)
+        area += fH.getValue(-off + s) * fX.getValue(-off + idiv(N, 2) + t - s);
+      y[t] = toInt(area * dx * this.fScale);
+    }
+    this.fYPanel.setSignal(y);
+  }
+  // Never called in the original either (it would pick a starting t automatically).
+  startConvolution() {}
+  mouseDown(x, y) {
+    if (this.fSigChanged) {
+      this.updateSignal();
+      this.fSigChanged = false;
+    }
+    var N = this.fSigLength;
+    if (x < 0) x = 0;
+    if (x >= N) x = N - 1;
+    this.fT = x + idiv(N, 2);
+    var integrand = new Array(N), fH = this.fH, fX = this.fX, off = this.fOffset;
+    for (var i = 0; i < N; i++)
+      integrand[i] = toInt(fH.getValue(-off + i) * fX.getValue(-off + this.fT - i) * this.fScale);
+    this.fIntPanel.setSignal(integrand);
+    this.fYPanel.setAndRepaint(x);
+    this.fPrevX = x;
+    this.repaint();
+    return true;
+  }
+  // Dragging reveals y at every t passed over, not just where the pointer events land.
+  mouseDrag(x, y) {
+    var N = this.fSigLength, i;
+    if (x < 0) x = 0;
+    if (x >= N) x = N - 1;
+    if (this.fPrevX > x)
+      for (i = this.fPrevX; i > x; i--) this.fYPanel.set(i);
+    for (i = this.fPrevX; i < x; i++) this.fYPanel.set(i);
+    this.mouseDown(x, y);
+    return true;
+  }
+}
+
+// ---------------------------------------------------------------------------------------
+// class Convolve: the applet. Builds the five panels and the two button rows.
+// ---------------------------------------------------------------------------------------
+var LAYOUT = {   // x, y, w, h inside the 480 x 600 applet
+  x: [3, 3, 234, 124], h: [243, 3, 234, 124],
+  conv: [3, 162, 474, 124], integ: [3, 292, 474, 124], y: [3, 422, 474, 174],
+  xSelect: [7, 130, 41, 23], hSelect: [247, 130, 41, 23],
+  xButtons: [53, 99, 145, 191], hButtons: [293, 339, 385, 431], buttonY: 130, buttonW: 41, buttonH: 23
+};
+var PRESETS = [['pulse', Color.blue], ['double pulse', Color.red], ['decay', Color.green128], ['clear', Color.black]];
+
+class Convolve {
+  constructor(root) {
+    this.root = root;
+    this.comps = [];
+    this.labels = [];
+    this.signalX = this.controllable('x(t)', LAYOUT.x, LAYOUT.xSelect, LAYOUT.xButtons, Color.blue);
+    this.signalH = this.controllable('h(t)', LAYOUT.h, LAYOUT.hSelect, LAYOUT.hButtons, Color.red);
+    this.signalInt = this.add(new SigPanel(LAYOUT.integ, 'x(t - v) h(v)', 'v', Color.black, true));
+    this.signalY = this.add(new ConvSigPanel(LAYOUT.y, '', Color.black, this));
+    this.fConvPanel = this.add(new ConvPanel(LAYOUT.conv, this.signalX.panel, this.signalH.panel,
+                                             this.signalInt, this.signalY));
+    this.signalX.panel.el.setAttribute('aria-label', 'x(t): draw with the mouse');
+    this.signalH.panel.el.setAttribute('aria-label', 'h(t): draw with the mouse');
+    this.fConvPanel.el.setAttribute('aria-label', 'x(t - v) and h(v): click or drag to set t');
+    this.signalInt.el.setAttribute('aria-label', 'x(t - v) h(v), the integrand');
+    this.signalY.el.setAttribute('aria-label', 'y(t), the output');
+    this.mouse(this.signalX.panel); this.mouse(this.signalH.panel); this.mouse(this.fConvPanel);
+    this.fConvPanel.el.classList.add('cv-draw');
+  }
+  add(comp) { this.comps.push(comp); this.root.appendChild(comp.el); return comp; }
+  // class ControllableSignal + SigControls: a drawing panel, "Select:" and four buttons.
+  controllable(name, bounds, selectBounds, buttonXs, color) {
+    var panel = this.add(new MouseSigPanel(bounds, name, 't', color, this));
+    panel.el.classList.add('cv-draw');
+    var lab = document.createElement('div');
+    lab.className = 'awtlabel'; lab.textContent = 'Select:';
+    this.root.appendChild(lab);
+    this.labels.push([lab, selectBounds]);
+    var buttons = [];
+    for (var k = 0; k < PRESETS.length; k++) {
+      var el = document.createElement('button');
+      el.type = 'button';
+      el.setAttribute('aria-label', name + ': ' + PRESETS[k][0]);
+      el.title = PRESETS[k][0];
+      el.appendChild(document.createElement('canvas'));
+      var b = this.add(new SigButton([buttonXs[k], LAYOUT.buttonY, LAYOUT.buttonW, LAYOUT.buttonH],
+                                     PRESETS[k][0], PRESETS[k][1], panel, this, el));
+      this.button(b);
+      buttons.push(b);
+    }
+    return { panel: panel, buttons: buttons };
+  }
+  getConvPanel() { return this.fConvPanel; }
+  sigChanged() { this.fConvPanel.sigChanged(); }
+
+  // AWT 1.0 sends mouseDown on press and mouseDrag for every move while the button is held,
+  // even outside the panel. Pointer capture gives the same, for mouse, pen and touch.
+  mouse(comp) {
+    var cv = comp.el, down = false;
+    function local(e) {
+      var r = cv.getBoundingClientRect();
+      return { x: Math.floor((e.clientX - r.left) * comp.bw / r.width),
+               y: Math.floor((e.clientY - r.top) * comp.bh / r.height) };
+    }
+    cv.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      try { cv.setPointerCapture(e.pointerId); } catch (err) { /* old Safari: fine without */ }
+      down = true;
+      var p = local(e); comp.mouseDown(p.x, p.y);
+    });
+    cv.addEventListener('pointermove', function (e) {
+      if (!down) return;
+      var p = local(e); comp.mouseDrag(p.x, p.y);
+    });
+    function up() { down = false; }
+    cv.addEventListener('pointerup', up);
+    cv.addEventListener('pointercancel', up);
+    cv.addEventListener('lostpointercapture', up);
+  }
+  // The original buttons act on mouse press. Keyboard Enter/Space arrives as a click with
+  // detail 0, which pointer presses never produce.
+  button(b) {
+    b.el.addEventListener('pointerdown', function (e) { if (e.button === 0) { e.preventDefault(); b.mouseDown(); } });
+    b.el.addEventListener('click', function (e) { if (e.detail === 0) b.mouseDown(); });
+  }
+  layout(z, dpr) {
+    this.root.style.width = (480 * z) + 'px';
+    this.root.style.height = (600 * z) + 'px';
+    for (var i = 0; i < this.comps.length; i++) this.comps[i].place(z, dpr);
+    for (var j = 0; j < this.labels.length; j++) {
+      var lab = this.labels[j][0], r = this.labels[j][1], s = lab.style;
+      s.left = ((r[0] + 2) * z) + 'px'; s.top = (r[1] * z) + 'px';
+      s.height = (r[3] * z) + 'px'; s.lineHeight = (r[3] * z) + 'px'; s.fontSize = (12 * z) + 'px';
+    }
+    this.paintAll();
+  }
+  paintAll() {
+    for (var i = 0; i < this.comps.length; i++) this.comps[i].paintNow();
+    document.documentElement.setAttribute('data-painted', String(this.comps.length));   // for tests/
+    this.announce();
+  }
+  // Screen-reader text (visually hidden): the current t and y(t) in the original's units,
+  // where +1 is the tick mark. The original has no visible numbers.
+  announce() {
+    var cp = this.fConvPanel, yp = this.signalY, out = document.getElementById('readout');
+    if (!out) return;
+    if (cp.fSigChanged || yp.fSetPoint < 0) { out.textContent = ''; return; }
+    var N = cp.fSigLength, t = (yp.fSetPoint - idiv(N, 2)) * 2 * Math.PI / N;
+    var yv = yp.signal.getValue(yp.fSetPoint) / idiv(cp.fAmplitude, 2);
+    out.textContent = 't = ' + t.toFixed(2) + ', y(t) = ' + yv.toFixed(2);
+  }
+}
+
+// ---------------------------------------------------------------------------------------
+// Scripted scenarios: the same user actions tools/CtProbe.java performs on the original
+// applet. #selftest runs them all and prints the arrays as JSON (tests/ compares them with
+// the original's); #shot=<scenario>:<step> stops at one capture point, unscaled, for
+// tools/compare_ct.py. Steps: a = signals chosen, b..e = t swept to 1/4, 1/2, 3/4, end.
+// ---------------------------------------------------------------------------------------
+var SCENARIOS = [
+  ['s1_pulse_pulse', 'pulse', 'pulse', null],
+  ['s2_pulse_decay', 'pulse', 'decay', null],
+  ['s3_doublepulse_decay', 'double pulse', 'decay', null],
+  ['s4_decay_doublepulse', 'decay', 'double pulse', null],
+  ['s5_drawn_pulse', 'clear', 'pulse', 'ramp']
+];
+function press(ctl, which) {
+  for (var k = 0; k < ctl.buttons.length; k++)
+    if (ctl.buttons[k].fName === which) ctl.buttons[k].mouseDown();
+}
+function runScenario(app, sc, lastStep) {
+  var conv = app.fConvPanel, W = conv.fSigLength;
+  var stops = [idiv(W, 4), idiv(W, 2), idiv(3 * W, 4), W - 1];
+  press(app.signalX, sc[1]);
+  press(app.signalH, sc[2]);
+  if (sc[3] === 'ramp') {   // a press then a drag: a student sketching a rising ramp
+    var p = app.signalX.panel, w = p.width(), hgt = p.height();
+    p.mouseDown(idiv(w, 2), idiv(hgt, 2));
+    for (var i = 1; i <= 10; i++)
+      p.mouseDrag(idiv(w, 2) + idiv(i * (idiv(w, 2) - 2), 10), idiv(hgt, 2) - idiv(i * idiv(hgt, 4), 10));
+  }
+  if (lastStep === 'a') return;
+  conv.mouseDown(0, 0);
+  var prev = 0, tags = 'bcde';
+  for (var k = 0; k < stops.length; k++) {
+    for (var x = prev + 1; x <= stops[k]; x++) conv.mouseDrag(x, 0);
+    prev = stops[k];
+    if (tags[k] === lastStep) return;
+  }
+}
+function dump(app) {
+  var cp = app.fConvPanel;
+  return { fT: cp.fT, fOffset: cp.fOffset, fPrevX: cp.fPrevX,
+    x: app.signalX.panel.getSignal().values().slice(), h: app.signalH.panel.getSignal().values().slice(),
+    integrand: app.signalInt.getSignal().values().slice(), y: app.signalY.getSignal().values().slice(),
+    y_shown: app.signalY.getSignal().shown.map(function (b) { return b ? 1 : 0; }) };
+}
+function selfTest(app) {
+  var out = { source: 'joy_of_convolution.html #selftest', scenarios: {} };
+  for (var i = 0; i < SCENARIOS.length; i++) {
+    runScenario(app, SCENARIOS[i], null);
+    out.scenarios[SCENARIOS[i][0]] = dump(app);
+  }
+  var pre = document.getElementById('selftest-out');
+  pre.textContent = JSON.stringify(out);
+}
+function shot(app, spec) {
+  var parts = spec.split(':'), name = parts[0], step = parts[1] || 'e';
+  if (name === 's0_initial') return;
+  for (var i = 0; i < SCENARIOS.length; i++) {
+    var last = SCENARIOS[i][0] === name;
+    runScenario(app, SCENARIOS[i], last ? step : null);
+    if (last) return;
+  }
+  if (name === 's6_single_click') {   // after s1..s5: fresh presets and one click at t = 0
+    press(app.signalX, 'pulse'); press(app.signalH, 'decay');
+    app.fConvPanel.mouseDown(idiv(app.fConvPanel.fSigLength, 2), 0);
+  }
+}
+
+// ---------------------------------------------------------------------------------------
+// Start-up and scaling. The 480 x 600 original is about 5 cm wide on a modern laptop, so
+// the whole applet is scaled (z) to fit the window height and the text column, and every
+// canvas is redrawn at the screen's real resolution so lines stay sharp.
+// ---------------------------------------------------------------------------------------
+var hash = location.hash, bare = hash.indexOf('#shot=') === 0;
+if (bare) document.documentElement.classList.add('bare');
+var app = new Convolve(document.getElementById('applet'));
+window.JOC = { applet: app, Signal: Signal, SCENARIOS: SCENARIOS, runScenario: runScenario, dump: dump };
+
+function fit() {
+  var z = 1;
+  if (!bare) {
+    var avail = document.getElementById('page').clientWidth - 30;
+    z = Math.min((window.innerHeight - 16) / 606, avail / 486);
+    z = Math.max(0.5, Math.min(z, 2.5));
+  }
+  app.layout(z, bare ? 1 : (window.devicePixelRatio || 1));
+}
+var resizeTimer = 0;
+window.addEventListener('resize', function () { clearTimeout(resizeTimer); resizeTimer = setTimeout(fit, 60); });
+
+if (hash === '#selftest') selfTest(new Convolve(document.createElement('div')));
+if (bare) shot(app, hash.slice(6));
+// Draw synchronously: headless Chrome may run no animation frames before it dumps the page.
+fit();
+</script>
+</body>
+</html>

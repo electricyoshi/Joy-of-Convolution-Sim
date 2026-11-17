@@ -58,10 +58,15 @@ Units/scales:
   pixels, centered (`fOffset = (W − N)/2`). So x/h panels show ~half the span of the conv/y panels.
   The port should define clean physical units and decide whether to label the time axis.
 - Vertical: ±1 tick marks at amplitude/2 pixels; signals stored as **int pixels** (truncation).
-- Presets (t ≥ 0 measured from center):
-  - pulse: +1 on [0, π/2)
-  - double pulse: −1 on [0, π/2), +1 on [π/2, ~π)
-  - decay: e^(−2t/π) for t ≥ 0  (code: `exp(-4.0*(i - N/2)/N)`)
+- Presets, in samples from the panel centre (sample 117 of 234; checked against the original's
+  arrays, 2026-11-17):
+  - pulse: +1 (31 px) on samples 0..57
+  - double pulse: −1 on 0..57, +1 on 58..115 (the very last sample of the panel stays 0)
+  - decay: `exp(-4.0*(i - N/2)/N)`, i.e. e^(−4k/234) at sample k ≥ 0
+  - **In the integral's units** (one sample = dx = 2π/474, because x and h are pasted 1:1 into
+    the 474-px conv panel): pulse width 58·dx ≈ 0.77 ≈ π/4 (not π/2, which an earlier note here
+    assumed by using 2π/234), decay e^(−1.29 t) (time constant ≈ 0.78). pulse ∗ pulse peaks at
+    23 px ≈ 0.74 in tick units, i.e. the pulse width less int truncation.
 - Mouse drawing: click sets one sample to the cursor height; drag linearly interpolates between
   the previous and current mouse positions. First/last samples are not editable.
 - `startConvolution()` exists (auto-picks a starting t) but is never called.
