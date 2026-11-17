@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Joy of Convolution (Discrete Time)</title>
+<!--
+  Browser port of "Joy of Convolution (Discrete Time)", the Java applet by Steven Crutchfield
+  (Johns Hopkins University, Summer 1997), updated by Michael Ross (Fall 2001), part of the JHU
+  Signals, Systems, and Control Demonstrations directed by Wilson J. Rugh. The original page and
+  applet are (c) 1995-2003 Johns Hopkins University and Wilson J. Rugh. Work in progress; see
+  README.md.
+
+  One self-contained file: no libraries, no network, runs from file://.
+  No source for the 2001 applet survives; this is a transcription of the bytecode in
+  DTConvolve.jar (javap -c), class by class with the original names (Signal, GraphPanel,
+  InputGraphPanel, DualGraphPanel, OutputGraphPanel, the three mouse listeners, DTConvolve).
+  Its arithmetic is kept exactly, so tests compare its values with the original's.
+  Hash modes (used by tests/ and tools/): #selftest, #shot=<scenario>:<step>.
+-->
+<style>
+  body { background: #F0F0F0; color: #000; margin: 0; font-family: "Times New Roman", Times, serif; font-size: 16px; line-height: 1.3; }
+  #page { max-width: 52em; margin: 0 auto; padding: 0 12px 24px; }
+  #credit-bar { background: #E0E0E0; border-bottom: 1px solid #C0C0C0; font: 14px Arial, Helvetica, sans-serif; padding: 6px 12px; text-align: center; }
+  #credit-bar .wip { color: #8A2B00; font-weight: bold; }
+  .banner { margin: 18px 0 30px; font-weight: normal; font-size: 26px; letter-spacing: 0.5px; position: relative; display: inline-block; padding: 0 0 6px 14px; }
+  .banner svg { position: absolute; left: 0; bottom: -4px; width: 405px; max-width: 90vw; height: 14px; }
+  summary { cursor: pointer; font-weight: bold; font-size: 1.2em; color: #0000EE; }
+  summary .hint { font-weight: normal; font-size: 0.75em; color: #333; }
+  details { margin: 0 0 1em; }
+  details > div { background: #FAFAFA; border: 1px solid #D0D0D0; padding: 6px 14px; margin-top: 6px; }
+  .draft { font: 13px Arial, Helvetica, sans-serif; color: #8A2B00; }
+  math[display="block"] { margin: 0.6em 0; font-size: 1.3em; }
+  #frame { display: table; margin: 1em auto; }
+  /* The applet: 600 x 600 logical px, scaled as a whole by fit() (z). The Swing content pane
+     is light grey (238); the graph panels are white. */
+  #applet { position: relative; background: #EEEEEE; overflow: hidden; touch-action: none;
+            -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  #applet canvas, #applet button, #applet .swinglabel { position: absolute; display: block; }
+  #applet button { padding: 0; margin: 0; background: #EEEEEE; cursor: pointer; border-style: solid; border-color: #808080; }
+  #applet button.x:hover { border-color: #00FF00; }   /* SignalClickListener: the signal's colour on hover */
+  #applet button.h:hover { border-color: #0000FF; }
+  #applet button canvas { position: absolute; }
+  #applet button:focus { outline: none; }
+  #applet button:focus-visible { outline: 2px solid #1A73E8; outline-offset: 1px; }
+  #applet .swinglabel { font-family: Arial, Helvetica, sans-serif; font-weight: bold; white-space: nowrap; color: #333333; text-align: center; }
+  .cv-draw { cursor: crosshair; }
+  .quiz ol > li { margin-bottom: 0.8em; }
+  .quiz ul { list-style: circle; margin: 0.2em 0; }
+  .return { text-align: center; margin: 2em 0 1.5em; }
+  #credits { background: #E0E0E0; padding: 8px 16px; margin: 0 auto; max-width: 40em; font-size: 14px; }
+  #credits h2 { font-size: 16px; margin: 6px 0; }
+  #credits ul { margin: 4px 0 8px; padding-left: 20px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  html.bare body { background: #FFFFFF; }
+  html.bare #credit-bar, html.bare #page > :not(#frame) { display: none; }
+  html.bare #page, html.bare #frame { padding: 0; margin: 0; }
+</style>
+</head>
+<body>
+<div id="err" role="alert" style="display:none;position:fixed;left:0;right:0;top:0;z-index:9;padding:10px 14px;background:#B84300;color:#FFFFFF;font:bold 16px Arial, Helvetica, sans-serif"></div>
+
+<div id="credit-bar">
+  <i>Joy of Convolution (Discrete Time)</i> by Steven Crutchfield (1997), updated by Michael Ross (2001),
+  Johns Hopkins University. Restored for modern browsers, 2026. <a href="#credits">Credits</a>
+  <br><span class="wip">Work in progress: not for classroom use yet. Permission from the original authors is being sought.</span>
+</div>
+
+<div id="page">
+<h1 class="banner">joy of convolution
+  <svg viewBox="0 0 405 14" preserveAspectRatio="none" aria-hidden="true"><path d="M0 13 L28 6 Q120 4 405 1 L405 3 Q140 7 40 13 Z" fill="#3333CC"/></svg>
+</h1>
+
+<details id="welcome">
+  <summary>Welcome! <span class="hint">(narration as text)</span></summary>
+  <div>
+    <p class="draft">Draft transcript of the original audio narration by Cherie Weinert. Not yet checked against the recording.</p>
+    <p>Welcome to the world of discrete-time, linear time-invariant systems. I will briefly describe the
+    convolution representation of such systems and the use of the Java applet below. In the next audio
+    clip, I will suggest a few exercises.</p>
+    <p>In a linear time-invariant system, the output signal <i>y</i>[<i>n</i>] is related to the input signal
+    <i>x</i>[<i>n</i>] by the convolution summation. In this summation, <i>h</i>[<i>n</i>] is a signal that
+    characterizes the behavior of the system. Indeed, it is easy to show that <i>h</i>[<i>n</i>] is the
+    response of the system to the unit pulse input signal. The unit pulse signal, usually written
+    <i>&delta;</i>[<i>n</i>], is the all-zero sequence, except that it has the value of 1 at <i>n</i> = 0.</p>
+    <p>To explore convolution using the applet, position the page so that all four layers of windows are
+    visible. Select <i>x</i>[<i>n</i>] and <i>h</i>[<i>n</i>] from the provided signals, or use your mouse to
+    sketch them. Then click on the first <i>k</i>-axis, where of course <i>k</i> is the summation index in the
+    convolution expression. This displays the signals <i>h</i>[<i>k</i>] and
+    <i>x</i>[<i>n</i>&nbsp;&minus;&nbsp;<i>k</i>] in the summand, with the value of <i>n</i> set by your
+    click. The corresponding product of signals in the summand and the resulting value of
+    <i>y</i>[<i>n</i>] are displayed in the last two windows. As you drag the value of <i>n</i> with the
+    mouse, the summand and the output signal are updated.</p>
+    <p>This is a good time to explore the applet.</p>
+  </div>
+</details>
+
+<p>The behavior of a linear, time-invariant discrete-time system with input signal <i>x[n]</i> and output
+signal <i>y[n]</i> is described by the <i>convolution sum</i></p>
+<math display="block" aria-label="y of n equals the sum over k from minus infinity to infinity of h of k times x of n minus k">
+  <mrow><mi>y</mi><mo stretchy="false">[</mo><mi>n</mi><mo stretchy="false">]</mo><mo>=</mo>
+  <munderover><mo>&#x2211;</mo><mrow><mi>k</mi><mo>=</mo><mo>&#x2212;</mo><mi>&#x221E;</mi></mrow><mi>&#x221E;</mi></munderover>
+  <mi>h</mi><mo stretchy="false">[</mo><mi>k</mi><mo stretchy="false">]</mo>
+  <mi>x</mi><mo stretchy="false">[</mo><mi>n</mi><mo>&#x2212;</mo><mi>k</mi><mo stretchy="false">]</mo></mrow>
+</math>
+<p>The signal <i>h[n]</i>, assumed known, is the response of the system to a unit-pulse input.</p>
+<p>The convolution summation has a simple graphical interpretation. First, plot <i>h[k]</i> and the
+"flipped and shifted" <i>x[n - k]</i> on the <i>k</i> axis, where <i>n</i> is fixed. Second, multiply the
+two signals to obtain a plot of the summand sequence indexed by <i>k</i>. Summing the values of this
+sequence with respect to <i>k</i> yields <i>y[n]</i>. These operations can be repeated for every value of
+<i>n</i> of interest.</p>
+<p>To explore graphical convolution, select signals <i>x[n]</i> and <i>h[n]</i> from the provided examples
+below, or use the mouse to draw your own signals or to modify selected signals. Then click at a desired
+value of <i>n</i> on the first <i>k</i> axis. After a moment, <i>h[k]</i> and <i>x[n - k]</i> will appear.
+Drag the <i>n</i> symbol along the <i>k</i> axis to change the value of <i>n</i>. For each <i>n</i>, the
+corresponding summand <i>h[k]x[n - k]</i> and output value <i>y[n]</i> will be displayed in their
+respective windows.</p>
+
+<details id="exercises">
+  <summary>Exercises. <span class="hint">(narration as text)</span></summary>
+  <div>
+    <p class="draft">Draft transcript of the original audio narration by Cherie Weinert. Not yet checked against the recording.</p>
+    <p>As a first exercise, verify with the applet that <i>h</i>[<i>n</i>] is the response of the system to a
+    unit pulse input. This means that if we know the response of a linear time-invariant system to the unit
+    pulse input, then we can use convolution to compute the response to any input signal.</p>
+    <p>Remember, you can pause or replay portions of this audio clip when convenient.</p>
+    <p>It is obvious that the convolution sum represents a linear system. However, it is worthwhile to
+    experiment with various time shifts of a particular input signal in order to verify the property of time
+    invariance.</p>
+    <p>A causal system is a system where the output signal at time <i>n</i> depends only on input signal values
+    for times less than or equal to <i>n</i>. Verify that a causal system corresponds to a unit pulse response
+    <i>h</i>[<i>n</i>] that is zero for negative values of <i>n</i>. For the remaining exercises, you might
+    want to concentrate on causal systems.</p>
+    <p>The fourth exercise is to verify with examples that convolution is commutative. In other words, the
+    output of a system with unit pulse response <i>h</i>[<i>n</i>] and input signal <i>x</i>[<i>n</i>] is the
+    same as the output of a system with unit pulse response <i>x</i>[<i>n</i>] and input signal
+    <i>h</i>[<i>n</i>].</p>
+    <p>Exercise 5 involves understanding how a linear time-invariant system can act as a low-pass filter.
+    Draw the <i>h</i>[<i>n</i>] whose only nonzero values are the values &frac12; at <i>n</i> = 0 and
+    <i>n</i> = 1. Then sketch input signals whose amplitudes oscillate rapidly and perform the convolutions.
+    Notice that the output signals are diminished in amplitude and smoother than the input signals. The system
+    filters out some of the high-frequency content in the input signal. As an extreme example, if you sketch
+    an input signal that looks like (&minus;1)<sup><i>n</i></sup> for positive values of <i>n</i>, the
+    highest-frequency signal possible in discrete time, the output signal will be almost the zero signal.</p>
+    <p>The last exercise is to explore simple unit pulse responses for which the corresponding system acts as
+    a high-pass filter. At the extreme, suppose the input signal is constant, say all ones, the lowest-frequency
+    signal possible in discrete time. Then the response of your system should be almost the zero signal.</p>
+  </div>
+</details>
+
+<div id="frame"><div id="applet" role="application" aria-label="Joy of Convolution (Discrete Time) applet"></div></div>
+<p id="readout" class="sr-only" aria-live="polite"></p>
+
+<details id="quiz" class="quiz">
+  <summary>Quiz</summary>
+  <div>
+    <h2 style="font-size:1.1em;text-align:center">Quiz on Discrete-Time Convolution</h2>
+    <p><i>A companion to Joy of Convolution (Discrete Time). It is recommended that you use the applet to
+    explore the question, and then see if you can mathematically justify your conclusion.</i></p>
+    <ol>
+      <li>If <i>x</i>[<i>n</i>] and <i>h</i>[<i>n</i>] both are odd signals, that is,
+        <i>x</i>[&minus;<i>n</i>] = &minus;<i>x</i>[<i>n</i>] and <i>h</i>[&minus;<i>n</i>] = &minus;<i>h</i>[<i>n</i>],
+        then the output signal <i>y</i>[<i>n</i>] will be a
+        <ul><li>an even signal</li><li>an odd signal</li><li>such that <i>y</i>[0] = 0</li><li>none of the above</li></ul></li>
+      <li>If a discrete-time LTI system is such that the output signal is always identical to the input signal,
+        then the unit-pulse response of the system is
+        <ul><li>a unit step</li><li>a unit pulse</li><li>all zeros</li><li>all ones</li></ul></li>
+      <li>If an LTI system has a unit-pulse response with a finite number of nonzero values, and the input
+        signal has a finite number of nonzero values, then the output signal
+        <ul><li>is all zeros</li><li>is constant</li><li>has a finite number of nonzero values</li><li>none of the above</li></ul></li>
+      <li>If <i>h</i>[<i>n</i>] is a unit-step function and the input signal <i>x</i>[<i>n</i>] is a unit-ramp
+        function, then the output signal value <i>y</i>[2] will be
+        <ul><li>0</li><li>1</li><li>2</li><li>3</li><li>none of the above</li></ul></li>
+      <li>Suppose <i>h</i>[<i>n</i>] is all zero except for <i>h</i>[0] = <i>h</i>[1] = <i>h</i>[2] = 1/3.
+        The best description for this LTI system is that it is
+        <ul><li>a low-pass filter</li><li>a high-pass filter</li><li>a bandpass filter</li><li>an all-pass filter</li></ul></li>
+    </ol>
+  </div>
+</details>
+
+<p class="return"><a href="https://pages.jh.edu/signals/index.html">&larr; return to demonstrations page</a>
+  <br><small>(the original Johns Hopkins demonstrations index)</small></p>
+
+<section id="credits" aria-labelledby="credits-h">
+  <p style="text-align:center;margin:4px 0 10px"><a href="joy_of_convolution.html">Continuous-time version.</a><br>
+  Original applet by Steve Crutchfield. Update by Michael Ross.</p>
+  <h2 id="credits-h">Credits</h2>
+  <ul>
+    <li><i>Joy of Convolution (Discrete Time)</i>: original applet by <b>Steven Crutchfield</b>, Johns Hopkins
+      University, Summer 1997; updated by <b>Michael Ross</b>, Fall 2001.</li>
+    <li>Continuous-time applet: Steven Crutchfield, Fall 1996.</li>
+    <li>Part of the Johns Hopkins University <i>Signals, Systems, and Control Demonstrations</i>, directed by
+      <b>Wilson J. Rugh</b>, 1994&ndash;2003.</li>
+    <li>Narration: <b>Cherie Weinert</b>. Site page design: <b>Mark Nesky</b>.</li>
+    <li>Supported by the National Science Foundation, the Kenan Fund, the Johns Hopkins Center for
+      Educational Resources, and the E. J. Schaefer Chair. Premier Engineering Courseware of 2001.</li>
+    <li>Original site: <a href="https://pages.jh.edu/signals/">https://pages.jh.edu/signals/</a></li>
+  </ul>
+  <p>Original page, applet, narration and quiz &copy; 1995&ndash;2003 Johns Hopkins University and Wilson J.
+  Rugh, all rights reserved. This browser port was made by electricyoshi for a Seattle Pacific University
+  course. It is not endorsed by or affiliated with Johns Hopkins University or the original authors.</p>
+</section>
+</div>
+
+<pre id="selftest-out" hidden></pre>
+
+<script>
+// If the main script fails (an old browser that can't parse it, or an error), say so on the
+// page instead of leaving a silently dead applet. A separate script, so that a syntax error
+// in the main one can't stop this from being installed.
+window.onerror = function (msg, src, line) {
+  var d = document.getElementById('err');
+  d.textContent = 'This page hit an error (' + msg + ', line ' + line + '). Try a current version of Chrome, Edge, Firefox or Safari.';
+  d.style.display = 'block';
+};
+</script>
+<script>
+'use strict';
+
+// java.awt.Color constants used by the original
+var Color = { white: '#FFFFFF', black: '#000000', green: '#00FF00', blue: '#0000FF', red: '#FF0000',
+              orange: '#FFC800', lightGray: '#C0C0C0', gray: '#808080' };
+var FONT = '12px Arial, Helvetica, sans-serif';   // Swing's "Dialog" 12 on Windows
+var jround = Math.round;                          // Java Math.round(double) = floor(x + 0.5)
+var d2i = Math.trunc;                             // Java (int) cast of a double
+
+// Java's Double.toString for the axis labels: whole numbers keep their ".0" ("-5.0", "10.0").
+function javaDouble(v) { return (Number.isInteger(v) && Math.abs(v) < 1e7) ? v.toFixed(1) : String(v); }
+
+// A tiny java.awt.Graphics stand-in over a canvas 2D context in applet pixels (see the CT page).
+function Graphics(ctx) {
+  this.c = ctx; this.pending = false;
+  ctx.lineWidth = 1; ctx.lineCap = 'square'; ctx.font = FONT; ctx.textBaseline = 'alphabetic';
+  this.setColor(Color.black);
+}
+Graphics.prototype.flush = function () { if (this.pending) { this.c.stroke(); this.pending = false; } };
+Graphics.prototype.setColor = function (col) {
+  this.flush(); this.color = col; this.c.strokeStyle = col; this.c.fillStyle = col;
+};
+Graphics.prototype.drawLine = function (x1, y1, x2, y2) {
+  var c = this.c;
+  if (!this.pending) { c.beginPath(); this.pending = true; }
+  c.moveTo(x1 + 0.5, y1 + 0.5); c.lineTo(x2 + 0.5, y2 + 0.5);
+};
+Graphics.prototype.drawString = function (s, x, y) { this.flush(); this.c.fillText(s, x, y); };
+// Java's aliased fillOval(x, y, 5, 5) is a 5 x 5 square with its corner pixels missing.
+Graphics.prototype.fillOval5 = function (x, y) {
+  this.flush(); var c = this.c;
+  c.beginPath();
+  c.moveTo(x + 1, y); c.lineTo(x + 4, y); c.lineTo(x + 5, y + 1); c.lineTo(x + 5, y + 4);
+  c.lineTo(x + 4, y + 5); c.lineTo(x + 1, y + 5); c.lineTo(x, y + 4); c.lineTo(x, y + 1);
+  c.closePath(); c.fill();
+};
+Graphics.prototype.drawOval = function (x, y, w, h) {
+  this.flush(); var c = this.c;
+  c.beginPath(); c.ellipse(x + w / 2 + 0.5, y + h / 2 + 0.5, w / 2, h / 2, 0, 0, 2 * Math.PI); c.stroke();
+};
+Graphics.prototype.clearRect = function (x, y, w, h) {
+  this.flush(); this.c.fillStyle = Color.white; this.c.fillRect(x, y, w, h); this.c.fillStyle = this.color;
+};
+
+// ---------------------------------------------------------------------------------------
+// class Signal: samples at integer x from lowerLimit, one per index (resolution 1).
+// Positions are rounded to an index with Java's Math.round. maxValue/minValue only ever
+// grow (setAt never lowers them), which drives the autoscaling below.
+// ---------------------------------------------------------------------------------------
+class Signal {
+  constructor(lowerLimit, upperLimit, maxIndex) {
+    if (maxIndex <= 0) throw new Error('The value for maxIndex must be positive.');
+    this.maxIndex = maxIndex;
+    if (lowerLimit < upperLimit) { this.lowerLimit = lowerLimit; this.upperLimit = upperLimit; }
+    else if (upperLimit < lowerLimit) { this.lowerLimit = upperLimit; this.upperLimit = lowerLimit; }
+    else throw new Error('The upper and lower limits for the signal cannot be equal.');
+    this.range = upperLimit - lowerLimit;
+    this.resolution = 1.0;
+    this.signalData = new Array(maxIndex);
+    this.clearSignal();
+  }
+  // Signal(Signal toCopy, ...): the shorter signal copied into the middle of a longer one.
+  static copyOf(toCopy, newLowerLimit, newUpperLimit, newMaxIndex) {
+    var s = new Signal(newLowerLimit, newUpperLimit, newMaxIndex);
+    var difference = newMaxIndex - toCopy.maxIndex, half = Math.trunc(difference / 2);
+    if (difference > 0)
+      for (var index = 0; index < newMaxIndex; index++) {
+        if (index < half) s.signalData[index] = 0;
+        else if (index < newMaxIndex - half) {
+          var v = toCopy.signalData[index - half];
+          if (v !== undefined) s.signalData[index] = v;   // (Java: ArrayIndexOutOfBounds ignored)
+        } else s.signalData[index] = 0;
+      }
+    return s;
+  }
+  static generateNewSignal(lowerLimit, upperLimit, maxIndex, signalType) {
+    var s = new Signal(lowerLimit, upperLimit, maxIndex), resolution = s.getResolution(), x, y;
+    if (signalType === Signal.ZERO) return s;
+    if (signalType === Signal.PULSE) {
+      y = 2.0;
+      for (x = lowerLimit / 3.0; x <= upperLimit / 3.0; x += resolution) s.setAt(x, y);
+    } else if (signalType === Signal.DECAY) {
+      for (x = 0; x <= upperLimit; x += resolution) { y = 3.0 * Math.exp(-x); s.setAt(x, y); }
+    } else if (signalType === Signal.SINE) {
+      for (x = -6.0; x <= 6.0; x += 1) { y = 3.0 * Math.sin(0.5 * x); s.setAt(x, y); }
+    } else if (signalType === Signal.RIGHT_PULSE) {
+      y = 2.0;
+      for (x = 0; x <= upperLimit / 4.0; x += resolution) s.setAt(x, y);
+    } else if (signalType === Signal.SQUARE_WAVE) {
+      y = 2.0;
+      for (x = 0; x <= upperLimit / 3.0; x += resolution) s.setAt(x, y);
+      for (x = upperLimit / 3.0; x <= 2.0 * upperLimit / 3.0; x += resolution) s.setAt(x, -y);
+    } else if (signalType === Signal.UNIT_IMPULSE) {
+      s.setAt(0, 1);
+    } else throw new Error(signalType + ' is not a legal signal type.');
+    return s;
+  }
+  clearSignal() {
+    for (var index = 0; index < this.maxIndex; index++) this.signalData[index] = 0;
+    this.maxValue = this.minValue = 0;
+  }
+  setAt(x, y) {
+    if (x < this.lowerLimit || x > this.upperLimit) return;
+    if (y > this.maxValue) this.maxValue = y;
+    if (y < this.minValue) this.minValue = y;
+    var index = jround((x - this.lowerLimit) / this.resolution);
+    if (index < 0 || index >= this.maxIndex) return;
+    this.signalData[index] = y;
+  }
+  getResolution() { return this.resolution; }
+  getMaxIndex() { return this.maxIndex; }
+  getRange() { return this.range; }
+  getMinValue() { return this.minValue; }
+  getMaxValue() { return this.maxValue; }
+  getXMin() { return this.lowerLimit; }
+  getXMax() { return this.upperLimit; }
+  getAt(x) {
+    if (x < this.lowerLimit || x > this.upperLimit) return 0;
+    var index = jround((x - this.lowerLimit) / this.resolution);
+    if (index < 0 || index >= this.maxIndex) return 0;
+    return this.signalData[index];
+  }
+  getDataArrayCopy() { return this.signalData.slice(); }
+  setDataArrayPointer(newData) { this.signalData = newData; }
+  xScaleBy(b) {
+    var x = this.lowerLimit, newSignal = new Array(this.maxIndex);
+    for (var index = 0; index < this.maxIndex; index++) { newSignal[index] = this.getAt(b * x); x += this.resolution; }
+    this.signalData = newSignal;
+    return this;
+  }
+  xShiftBy(c) {
+    var x = this.lowerLimit, newSignal = new Array(this.maxIndex);
+    for (var index = 0; index < this.maxIndex; index++) { newSignal[index] = this.getAt(x - c); x += this.resolution; }
+    this.signalData = newSignal;
+    return this;
+  }
+  static multiply(signal1, signal2) {
+    var toReturn = new Signal(signal1.lowerLimit, signal1.upperLimit, signal1.maxIndex);
+    for (var index = 0; index < signal1.maxIndex; index++) {
+      var y = signal1.signalData[index] * signal2.signalData[index];
+      if (y > toReturn.maxValue) toReturn.maxValue = y;
+      if (y < toReturn.minValue) toReturn.minValue = y;
+      toReturn.signalData[index] = y;
+    }
+    return toReturn;
+  }
+  static sumTerms(signal) {
+    var toReturn = 0;
+    for (var index = 0; index < signal.maxIndex; index++) toReturn += signal.signalData[index];
+    return toReturn;
+  }
+  fillRangeLinear(x1, x2, y1, y2) {
+    var temp;
+    if (x1 > x2) { temp = x1; x1 = x2; x2 = temp; temp = y1; y1 = y2; y2 = temp; }
+    var slope = (y2 - y1) / (x2 - x1);
+    for (var currentX = x1; currentX <= x2; currentX += this.resolution)
+      this.setAt(currentX, slope * (currentX - x1) + y1);
+  }
+}
+Signal.ZERO = 0; Signal.PULSE = 1; Signal.DECAY = 2; Signal.SINE = 3;
+Signal.RIGHT_PULSE = 4; Signal.SQUARE_WAVE = 5; Signal.UNIT_IMPULSE = 6;
+
+// ---------------------------------------------------------------------------------------
+// Panels. Each Swing component becomes a canvas at its bounds inside the applet; the bounds
+// are the GridBag result measured from the running original (reference/captures/dt/
+// geometry.txt).
+// ---------------------------------------------------------------------------------------
+class Component {
+  constructor(bounds, el) {
+    this.bx = bounds[0]; this.by = bounds[1]; this.bw = bounds[2]; this.bh = bounds[3];
+    this.el = el || document.createElement('canvas');
+    this.canvas = this.el.tagName === 'CANVAS' ? this.el : this.el.querySelector('canvas');
+  }
+  place(z, dpr) {
+    var s = this.el.style;
+    s.left = (this.bx * z) + 'px'; s.top = (this.by * z) + 'px';
+    s.width = (this.bw * z) + 'px'; s.height = (this.bh * z) + 'px';
+    this.canvas.width = Math.max(1, Math.round(this.bw * z * dpr));
+    this.canvas.height = Math.max(1, Math.round(this.bh * z * dpr));
+  }
+  paintNow() {
+    var c = this.canvas.getContext('2d');
+    c.setTransform(this.canvas.width / this.bw, 0, 0, this.canvas.height / this.bh, 0, 0);
+    var g = new Graphics(c);
+    this.paint(g);
+    g.flush();
+  }
+}
+
+// class GraphPanel: axes, ticks at tenths of the height, labels, and stem plots.
+class GraphPanel extends Component {
+  constructor(bounds, minX, maxX, minY, maxY, yLabel, xLabel) {
+    super(bounds);
+    this.doAxisLabels = true;
+    this.minX = minX; this.maxX = maxX; this.minY = minY; this.maxY = maxY;
+    this.yLabel = yLabel; this.xLabel = xLabel;
+  }
+  // One stem per index plus one more at maxX (always 0: it is past the last index).
+  drawSignal(g, color, signalToDraw) {
+    g.setColor(color);
+    var maxIndex = signalToDraw.getMaxIndex(), resolution = signalToDraw.getResolution();
+    var xPointArray = new Array(maxIndex + 1), yPointArray = new Array(maxIndex + 1);
+    var xValue = this.minX, w = this.bw, h = this.bh, index;
+    var halfHeight = jround(h / 2.0);
+    for (index = 0; index <= maxIndex; index++) xPointArray[index] = jround(w * index / maxIndex);
+    for (index = 0; index <= maxIndex; index++) {
+      yPointArray[index] = jround(h * (0.5 + 0.5 * signalToDraw.getAt(xValue) / this.minY));
+      xValue += resolution;
+      g.drawLine(xPointArray[index], yPointArray[index], xPointArray[index], halfHeight);
+      g.fillOval5(xPointArray[index] - 2, yPointArray[index] - 2);
+    }
+  }
+  paint(g) {
+    var w = this.bw, h = this.bh;
+    g.clearRect(0, 0, w, h);
+    g.setColor(Color.lightGray);
+    g.drawLine(0, Math.trunc(h / 2), w, Math.trunc(h / 2));
+    g.drawLine(Math.trunc(w / 2), 0, Math.trunc(w / 2), h);
+    var tickStart = Math.trunc(w / 2) - 3, tickStop = Math.trunc(w / 2) + 3, yStep = h / 10.0;
+    for (var index = 0; index <= 4; index += 1) {
+      var yLocation = jround(index * yStep);
+      g.drawLine(tickStart, yLocation, tickStop, yLocation);
+      g.drawLine(tickStart, h - yLocation, tickStop, h - yLocation);
+    }
+    g.setColor(Color.black);
+    g.drawString(this.xLabel, w - 10, Math.trunc(h / 2) + 15);
+    g.drawString(this.yLabel, 2, 13);
+    if (this.doAxisLabels) {
+      g.drawString(javaDouble(this.minY), Math.trunc(w / 2) - (Math.abs(this.minY) < 10 ? 25 : 30), h - 2);
+      g.drawString(javaDouble(this.maxY), Math.trunc(w / 2) - (Math.abs(this.maxY) < 10 ? 20 : 25), 11);
+    }
+  }
+  getYMax() { return this.maxY; }
+  getYMin() { return this.minY; }
+  getXMax() { return this.maxX; }
+  getXMin() { return this.minX; }
+  getRange() { return this.maxX - this.minX; }
+  hideAxisLabels() { this.doAxisLabels = false; }
+  showAxisLabels() { this.doAxisLabels = true; }
+}
+
+// class InputGraphPanel: x[n] or h[n], drawn with the mouse (MyMouseGraphListener).
+class InputGraphPanel extends GraphPanel {
+  constructor(bounds, minX, maxX, minY, maxY, yLabel, xLabel, maxXPoints, color, owner) {
+    super(bounds, minX, maxX, minY, maxY, yLabel, xLabel);
+    this.color = color; this.owner = owner;
+    this.signal = new Signal(minX, maxX, maxXPoints);
+    this.mouseListener = new MyMouseGraphListener(this.signal, this);
+  }
+  paint(g) { super.paint(g); this.drawSignal(g, this.color, this.signal); }
+  getSignal() { return this.signal; }
+  setSignal(newSignal) { this.signal = newSignal; this.mouseListener.changeSignal(newSignal); this.owner.repaint(); }
+  notifyOwner() { this.owner.updateOutputPanels(); }
+}
+
+// class MyMouseGraphListener: a press sets one sample; a drag fills a straight line from the
+// previous position. Positions are not clamped to the panel.
+class MyMouseGraphListener {
+  constructor(signal, owner) {
+    this.signal = signal; this.owner = owner;
+    this.xMin = owner.getXMin(); this.xRange = owner.getRange();
+    this.yMin = owner.getYMin(); this.yRange = owner.getYMax() - this.yMin;
+    this.oldX = 0; this.oldY = 0;
+  }
+  changeSignal(newSignal) { this.signal = newSignal; }
+  locate(ex, ey) {
+    this.x = this.xRange * ex / this.owner.bw + this.xMin;
+    this.y = -(this.yRange * ey / this.owner.bh + this.yMin);
+  }
+  mousePressed(ex, ey) {
+    this.locate(ex, ey);
+    this.signal.setAt(this.x, this.y);
+    this.oldX = this.x; this.oldY = this.y;
+    this.owner.notifyOwner();
+  }
+  mouseDragged(ex, ey) {
+    this.locate(ex, ey);
+    if (this.oldX === this.x) this.signal.setAt(this.x, this.y);
+    else this.signal.fillRangeLinear(this.oldX, this.x, this.oldY, this.y);
+    this.oldX = this.x; this.oldY = this.y;
+    this.owner.notifyOwner();
+  }
+}
+
+// class DualGraphPanel: "x[n-k] and h[k]". Click sets n, drag moves it (MySimpleMouseListener).
+class DualGraphPanel extends GraphPanel {
+  constructor(bounds, minX, maxX, minY, maxY, yLabel, xLabel, maxXPoints, color1, color2, owner) {
+    super(bounds, minX, maxX, minY, maxY, yLabel, xLabel);
+    this.n = 0;
+    this.hideNDuringNextDraw = true;
+    this.signal1 = new Signal(minX, maxX, maxXPoints);
+    this.signal2 = new Signal(minX, maxX, maxXPoints);
+    this.maxIndex = maxXPoints;
+    this.color1 = color1; this.color2 = color2; this.owner = owner;
+    this.xRange = this.signal1.getRange();
+    this.mouseListener = new MySimpleMouseListener(this);
+  }
+  paint(g) {
+    super.paint(g);
+    if (!this.owner.reset) {
+      this.drawSignal(g, this.color1, this.signal1);
+      this.drawSignal(g, this.color2, this.signal2);
+    }
+    if (!this.hideNDuringNextDraw) {
+      g.setColor(Color.black);
+      var x = d2i(jround(this.maxIndex * this.bw * (this.n - this.minX) / this.xRange) / this.maxIndex);
+      g.drawOval(x - 5, Math.trunc(this.bh / 2) - 5, 10, 10);
+      g.drawString('n = ' + this.n, x - 10, Math.trunc(this.bh / 2) + 17);
+    }
+  }
+  // x[n - k]: x copied into the wider k range, shifted by n, then flipped.
+  setAndShiftSignal1(newSignal1) {
+    this.signal1 = Signal.copyOf(newSignal1, this.signal1.getXMin(), this.signal1.getXMax(), this.signal1.getMaxIndex());
+    this.signal1.xShiftBy(-this.n);
+    this.signal1.xScaleBy(-1.0);
+    this.showN();
+  }
+  setSignals(newSignal1, newSignal2) {
+    this.signal1 = Signal.copyOf(newSignal1, this.signal1.getXMin(), this.signal1.getXMax(), this.signal1.getMaxIndex());
+    this.signal1.xShiftBy(-this.n);
+    this.signal1.xScaleBy(-1.0);
+    this.signal2 = Signal.copyOf(newSignal2, this.signal2.getXMin(), this.signal2.getXMax(), this.signal2.getMaxIndex());
+  }
+  getSignal1() { return this.signal1; }
+  getSignal2() { return this.signal2; }
+  setN(newN) { this.n = newN; this.owner.nChanged(); }
+  getN() { return this.n; }
+  resetN() { this.n = 0; this.hideNDuringNextDraw = true; }
+  showN() { this.hideNDuringNextDraw = false; }
+}
+
+// class MySimpleMouseListener: n from the mouse x with an (int) cast, which truncates toward
+// zero, so the n = 0 zone is twice as wide as the others. A drag calls setN for every n from
+// the lower to the higher of (previous lower end, here), revealing y at each one.
+class MySimpleMouseListener {
+  constructor(owner) { this.owner = owner; this.oldN = 0; this.N = 0; this.index = 0; }
+  nAt(ex) { return d2i(this.owner.xRange * ex / this.owner.bw + this.owner.minX); }
+  mousePressed(ex) {
+    this.oldN = this.nAt(ex);
+    this.owner.setN(this.oldN);
+  }
+  mouseDragged(ex) {
+    this.N = this.nAt(ex);
+    if (this.N < this.oldN) { var temp = this.N; this.N = this.oldN; this.oldN = temp; }
+    for (this.index = this.oldN; this.index <= this.N; this.index++) this.owner.setN(this.index);
+  }
+}
+
+// class OutputGraphPanel: the product x[n-k]h[k], or y[n] (with the equation image).
+class OutputGraphPanel extends GraphPanel {
+  constructor(owner, bounds, minX, maxX, minY, maxY, yLabel, xLabel, maxXPoints, color) {
+    super(bounds, minX, maxX, minY, maxY, yLabel, xLabel);
+    this.doImageLabel = false;
+    this.markNValue = false;
+    if (yLabel.charAt(0) === '/' && yLabel.charAt(1) === '/') {   // "//definition" (the original names its equation image here)
+      this.yLabel = '';
+      this.doImageLabel = true;
+    }
+    this.color = color; this.owner = owner;
+    this.signal = new Signal(minX, maxX, maxXPoints);
+    this.maxIndex = maxXPoints;
+    this.xRange = this.signal.getRange();
+    this.n = 0;
+  }
+  paint(g) {
+    super.paint(g);
+    if (!this.owner.reset) {
+      this.drawSignal(g, this.color, this.signal);
+      if (this.markNValue) {
+        g.setColor(Color.black);
+        var x = d2i(jround(this.maxIndex * this.bw * (this.n - this.minX) / this.xRange) / this.maxIndex);
+        g.drawOval(x - 5, Math.trunc(this.bh / 2) - 5, 10, 10);
+      }
+    }
+    if (this.doImageLabel) { g.flush(); drawDefinition(g.c); }
+  }
+  setSignal(newSignal) { this.signal = newSignal; }
+  getSignal() { return this.signal; }
+  setAt(x, y) { this.signal.setAt(x, y); }
+  resetYAxes(minY, maxY) { this.minY = minY; this.maxY = maxY; }
+  setN(newN) { this.markNValue = true; this.n = newN; }
+}
+
+// The y[n] panel's equation image (153 x 44, opaque, drawn last at the top-left) is redrawn
+// as text so that no JHU image is needed: y[n] = sum over k of h[k] x[n - k].
+function drawDefinition(c) {
+  c.save();
+  c.fillStyle = Color.white; c.fillRect(0, 0, 153, 44);
+  c.fillStyle = Color.black;
+  var it = 'italic 16px "Times New Roman", Times, serif', up = '16px "Times New Roman", Times, serif';
+  var parts = [['y', it], ['[', up], ['n', it], [']', up], [' = ', up]], x = 6, i;
+  for (i = 0; i < parts.length; i++) { c.font = parts[i][1]; c.fillText(parts[i][0], x, 27); x += c.measureText(parts[i][0]).width + 0.5; }
+  c.font = '24px "Times New Roman", Times, serif'; c.fillText('∑', 51, 31);
+  c.font = '10px "Times New Roman", Times, serif'; c.fillText('∞', 56, 9);
+  c.font = 'italic 10px "Times New Roman", Times, serif'; c.fillText('k', 46, 42);
+  c.font = '10px "Times New Roman", Times, serif'; c.fillText('= −∞', 51, 42);
+  parts = [['h', it], ['[', up], ['k', it], [']', up], [' ', up], ['x', it], ['[', up], ['n', it],
+           [' − ', up], ['k', it], [']', up]];
+  x = 71;
+  for (i = 0; i < parts.length; i++) { c.font = parts[i][1]; c.fillText(parts[i][0], x, 27); x += c.measureText(parts[i][0]).width + 0.5; }
+  c.restore();
+}
+
+// ---------------------------------------------------------------------------------------
+// class DTConvolve: the applet.
+// ---------------------------------------------------------------------------------------
+var LAYOUT = {   // x, y, w, h inside the 600 x 600 applet (GridBag result, with the 29 x 21 icons)
+  x: [9, 7, 286, 126], h: [305, 7, 286, 126],
+  dual: [9, 195, 582, 126], product: [9, 331, 582, 126], y: [9, 467, 582, 126],
+  xSelect: [5, 138, 54, 52], hSelect: [301, 138, 54, 52],
+  xButtons: [61, 109, 157, 205, 253], hButtons: [357, 405, 453, 501, 549], buttonY: 138, buttonW: 46, buttonH: 52
+};
+var PRESETS = [['Square pulse', Signal.RIGHT_PULSE], ['One period of a square wave', Signal.SQUARE_WAVE],
+               ['Right-sided exponential', Signal.DECAY], ['Unit Impulse', Signal.UNIT_IMPULSE], ['Clear', Signal.ZERO]];
+
+class DTConvolve {
+  constructor(root) {
+    this.root = root;
+    this.xColor = Color.green; this.hColor = Color.blue;
+    this.reset = true;
+    this.comps = []; this.labels = []; this.buttons = { x: [], h: [] };
+    this.xInputPanel = this.add(new InputGraphPanel(LAYOUT.x, -12.0, 12.0, -5.0, 5.0, 'x[n]', 'n', 24, Color.green, this));
+    this.hInputPanel = this.add(new InputGraphPanel(LAYOUT.h, -12.0, 12.0, -5.0, 5.0, 'h[n]', 'n', 24, Color.blue, this));
+    this.presetRow('x', this.xInputPanel, LAYOUT.xSelect, LAYOUT.xButtons, this.xColor);
+    this.presetRow('h', this.hInputPanel, LAYOUT.hSelect, LAYOUT.hButtons, this.hColor);
+    this.xhDualPanel = this.add(new DualGraphPanel(LAYOUT.dual, -24.0, 24.0, -5.0, 5.0, 'x[n-k] and h[k]', 'k', 48, Color.green, Color.blue, this));
+    this.xhOutputPanel = this.add(new OutputGraphPanel(this, LAYOUT.product, -24.0, 24.0, -5.0, 5.0, 'x[n-k]h[k]', 'k', 48, Color.orange));
+    this.yOutputPanel = this.add(new OutputGraphPanel(this, LAYOUT.y, -24.0, 24.0, -5.0, 5.0, '//definition', 'n', 48, Color.red));
+    this.xhOutputPanel.hideAxisLabels();
+    this.yOutputPanel.hideAxisLabels();
+    this.xInputPanel.el.setAttribute('aria-label', 'x[n]: draw with the mouse');
+    this.hInputPanel.el.setAttribute('aria-label', 'h[n]: draw with the mouse');
+    this.xhDualPanel.el.setAttribute('aria-label', 'x[n-k] and h[k]: click or drag to set n');
+    this.xhOutputPanel.el.setAttribute('aria-label', 'x[n-k]h[k], the summand');
+    this.yOutputPanel.el.setAttribute('aria-label', 'y[n], the output');
+    var self = this;
+    [this.xInputPanel, this.hInputPanel].forEach(function (p) {
+      p.el.classList.add('cv-draw');
+      self.mouse(p.el, function (x, y) { p.mouseListener.mousePressed(x, y); }, function (x, y) { p.mouseListener.mouseDragged(x, y); }, p);
+    });
+    var d = this.xhDualPanel;
+    d.el.classList.add('cv-draw');
+    this.mouse(d.el, function (x) { d.mouseListener.mousePressed(x); }, function (x) { d.mouseListener.mouseDragged(x); }, d);
+  }
+  add(comp) { this.comps.push(comp); this.root.appendChild(comp.el); return comp; }
+  // The "Select:" label and five icon labels with a SignalClickListener each (real buttons here).
+  presetRow(which, panel, selectBounds, xs, color) {
+    var lab = document.createElement('div');
+    lab.className = 'swinglabel'; lab.textContent = 'Select:';
+    this.root.appendChild(lab);
+    this.labels.push([lab, selectBounds]);
+    for (var k = 0; k < PRESETS.length; k++) {
+      var el = document.createElement('button');
+      el.type = 'button'; el.className = which;
+      el.title = PRESETS[k][0];
+      el.setAttribute('aria-label', which + '[n]: ' + PRESETS[k][0]);
+      el.appendChild(document.createElement('canvas'));
+      var b = new Component([xs[k], LAYOUT.buttonY, LAYOUT.buttonW, LAYOUT.buttonH], el);
+      b.kind = PRESETS[k][1]; b.tip = PRESETS[k][0]; b.color = color;
+      b.paint = paintIcon;
+      this.comps.push(b); this.root.appendChild(el);
+      this.buttons[which].push(b);
+      this.clicker(b, panel);
+    }
+  }
+  // SignalClickListener.mousePressed
+  pressPreset(b, panel) {
+    panel.setSignal(Signal.generateNewSignal(-12.0, 12.0, 24, b.kind));
+    this.updateOutputPanels();
+  }
+  clicker(b, panel) {
+    var self = this;
+    b.el.addEventListener('pointerdown', function (e) { if (e.button === 0) { e.preventDefault(); self.pressPreset(b, panel); } });
+    b.el.addEventListener('click', function (e) { if (e.detail === 0) self.pressPreset(b, panel); });   // keyboard
+  }
+  // Swing delivers mousePressed, then mouseDragged for every move while held, even outside.
+  mouse(el, onPress, onDrag, comp) {
+    var down = false;
+    function local(e) {
+      var r = el.getBoundingClientRect();
+      return [Math.floor((e.clientX - r.left) * comp.bw / r.width), Math.floor((e.clientY - r.top) * comp.bh / r.height)];
+    }
+    el.addEventListener('pointerdown', function (e) {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      try { el.setPointerCapture(e.pointerId); } catch (err) { /* old Safari: fine without */ }
+      down = true;
+      var p = local(e); onPress(p[0], p[1]);
+    });
+    el.addEventListener('pointermove', function (e) { if (down) { var p = local(e); onDrag(p[0], p[1]); } });
+    function up() { down = false; }
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+    el.addEventListener('lostpointercapture', up);
+  }
+
+  // x or h changed: hide the lower panels until n is clicked, and rescale their y axes.
+  updateOutputPanels() {
+    this.reset = true;
+    this.xhDualPanel.resetN();
+    this.xhOutputPanel.hideAxisLabels();
+    this.yOutputPanel.hideAxisLabels();
+    this.signal1 = this.xInputPanel.getSignal();
+    this.signal2 = this.hInputPanel.getSignal();
+    this.xhDualPanel.setSignals(this.signal1, this.signal2);
+    this.A = this.signal1.getMaxValue(); this.a = this.signal1.getMinValue();
+    this.B = this.signal2.getMaxValue(); this.b = this.signal2.getMinValue();
+    var A = this.A, a = this.a, B = this.B, b = this.b;
+    // Product axis: from the extreme products of x's and h's max/min values.
+    if (A * B > 0) {
+      this.newMax = A * B; this.newMin = a * b;
+      if (a * B < this.newMin) this.newMin = a * B;
+      if (A * b < this.newMin) this.newMin = A * b;
+    } else {
+      this.newMin = A * B; this.newMax = a * b;
+      if (a * B > this.newMax) this.newMax = a * B;
+      if (A * b > this.newMax) this.newMax = A * b;
+    }
+    this.temp = Math.abs(this.newMax) > Math.abs(this.newMin) ? Math.abs(this.newMax) : Math.abs(this.newMin);
+    this.divisionsOfFive = d2i(this.temp / 5.0);
+    if (this.temp / 5.0 > this.divisionsOfFive || this.divisionsOfFive === 0) this.divisionsOfFive++;
+    this.newMin = -5 * this.divisionsOfFive; this.newMax = 5 * this.divisionsOfFive;
+    this.xhOutputPanel.resetYAxes(this.newMin, this.newMax);
+    this.xhOutputPanel.setSignal(Signal.multiply(this.xhDualPanel.getSignal1(), this.xhDualPanel.getSignal2()));
+    // y axis: the extremes over n of a sum. signal1 is already x[-k], and the loop shifts and
+    // flips it again, so this is the range of the cross-correlation, not of y (a quirk of the
+    // original, kept: y can run off its axis).
+    this.newMin = -5.0; this.newMax = 5.0;
+    var signal1 = new Signal(-24.0, 24.0, 48), signal2 = this.xhDualPanel.getSignal2();
+    for (var nIndex = -26; nIndex < 25; nIndex++) {
+      signal1.setDataArrayPointer(this.xhDualPanel.getSignal1().getDataArrayCopy());
+      signal1.xShiftBy(-1 * nIndex);
+      signal1.xScaleBy(-1.0);
+      var currentValue = Signal.sumTerms(Signal.multiply(signal1, signal2));
+      if (currentValue > this.newMax) this.newMax = currentValue;
+      else if (currentValue < this.newMin) this.newMin = currentValue;
+    }
+    this.temp = Math.abs(this.newMax) > Math.abs(this.newMin) ? Math.abs(this.newMax) : Math.abs(this.newMin);
+    this.divisionsOfFive = jround(this.temp / 5.0);
+    this.newMin = -5 * this.divisionsOfFive; this.newMax = 5 * this.divisionsOfFive;
+    if (this.temp > this.newMax || this.temp < this.newMin) { this.newMin -= 10.0; this.newMax += 10.0; }
+    this.yOutputPanel.getSignal().clearSignal();
+    this.yOutputPanel.resetYAxes(this.newMin, this.newMax);
+    this.repaint();
+  }
+  // n moved: x[n-k], the product, and y[n] at this n.
+  nChanged() {
+    this.reset = false;
+    this.xhDualPanel.setAndShiftSignal1(this.xInputPanel.getSignal());
+    this.xhOutputPanel.showAxisLabels();
+    this.yOutputPanel.showAxisLabels();
+    this.xhOutputPanel.setN(this.xhDualPanel.getN());
+    this.xhOutputPanel.setSignal(Signal.multiply(this.xhDualPanel.getSignal1(), this.xhDualPanel.getSignal2()));
+    this.yOutputPanel.setN(this.xhDualPanel.getN());
+    this.yOutputPanel.setAt(this.xhDualPanel.getN(), Signal.sumTerms(this.xhOutputPanel.getSignal()));
+    this.repaint();
+  }
+
+  // Swing's repaint() is asynchronous and coalesced; so is this (whole applet, it is cheap).
+  repaint() {
+    var self = this;
+    if (this.rafPending) return;
+    this.rafPending = true;
+    requestAnimationFrame(function () { self.rafPending = false; self.paintAll(); });
+  }
+  layout(z, dpr) {
+    this.root.style.width = (600 * z) + 'px';
+    this.root.style.height = (600 * z) + 'px';
+    for (var i = 0; i < this.comps.length; i++) {
+      var c = this.comps[i];
+      c.place(z, dpr);
+      if (c.tip) {   // icon button: 1-px line border, 29 x 21 icon centred like a JLabel's
+        c.el.style.borderWidth = z + 'px';
+        var cs = c.canvas.style;
+        cs.left = (8 * z - z) + 'px'; cs.top = (15 * z - z) + 'px';
+        cs.width = (29 * z) + 'px'; cs.height = (21 * z) + 'px';
+        c.canvas.width = Math.round(29 * z * dpr); c.canvas.height = Math.round(21 * z * dpr);
+      }
+    }
+    for (var j = 0; j < this.labels.length; j++) {
+      var lab = this.labels[j][0], r = this.labels[j][1], s = lab.style;
+      s.left = (r[0] * z) + 'px'; s.top = (r[1] * z) + 'px'; s.width = (r[2] * z) + 'px';
+      s.height = (r[3] * z) + 'px'; s.lineHeight = (r[3] * z) + 'px'; s.fontSize = (12 * z) + 'px';
+    }
+    this.paintAll();
+  }
+  paintAll() {
+    for (var i = 0; i < this.comps.length; i++) this.comps[i].paintNow();
+    document.documentElement.setAttribute('data-painted', String(this.comps.length));   // for tests/
+    this.announce();
+  }
+  // Screen-reader text (visually hidden): the current n and y[n].
+  announce() {
+    var out = document.getElementById('readout');
+    if (!out || this !== window.JOC.applet) return;
+    if (this.reset) { out.textContent = ''; return; }
+    var n = this.xhDualPanel.getN();
+    out.textContent = 'n = ' + n + ', y[n] = ' + this.yOutputPanel.getSignal().getAt(n).toFixed(2);
+  }
+}
+
+// Preset button faces: our own small schematic stem plots (n = -4..4), in place of the
+// original's icon images, which are schematic in the same way (a 2-sample pulse, and so on).
+var ICONS = {};
+ICONS[Signal.RIGHT_PULSE] = [0, 0, 0, 0, 1, 1, 0, 0, 0];
+ICONS[Signal.SQUARE_WAVE] = [0, 0, 0, 0, 1, 1, -1, -1, 0];
+ICONS[Signal.DECAY] = [0, 0, 0, 0, 1, 0.6, 0.35, 0.2, 0];
+ICONS[Signal.UNIT_IMPULSE] = [0, 0, 0, 0, 1, 0, 0, 0, 0];
+ICONS[Signal.ZERO] = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+function paintIcon(g) {
+  var c = g.c, vals = ICONS[this.kind];
+  c.setTransform(this.canvas.width / 29, 0, 0, this.canvas.height / 21, 0, 0);
+  c.clearRect(0, 0, 29, 21);
+  g.setColor(Color.gray);
+  g.drawLine(2, 11, 26, 11);
+  g.drawLine(14, 3, 14, 19);
+  g.setColor(this.color);
+  for (var k = -4; k <= 4; k++) {   // stems with small arrow-like heads
+    var x = 14 + 3 * k, v = vals[k + 4], y = 11 - Math.round(6 * v);
+    if (y !== 11) g.drawLine(x, 11, x, y);
+    g.flush(); c.fillRect(x - 1, y, 3, 1); c.fillRect(x, y + (v < 0 ? 1 : -1), 1, 1);
+  }
+}
+Component.prototype.paint = function () {};
+// paintNow for icon buttons: the canvas is the icon only, not the whole button.
+var basePaintNow = Component.prototype.paintNow;
+Component.prototype.paintNow = function () {
+  if (!this.tip) return basePaintNow.call(this);
+  var g = new Graphics(this.canvas.getContext('2d'));
+  this.paint(g); g.flush();
+};
+
+// ---------------------------------------------------------------------------------------
+// Scripted scenarios: the same user actions tools/DtProbe.java performs on the original.
+// #selftest runs them all and prints the values as JSON (tests/ compares them with the
+// original's); #shot=<scenario>:<step> stops at one capture point, unscaled.
+// Steps: a = signals chosen, b..e = n swept to the panel's 1/4, 1/2, 3/4 and end.
+// ---------------------------------------------------------------------------------------
+var SCENARIOS = [
+  ['d1_pulse_pulse', 'Square pulse', 'Square pulse', false],
+  ['d2_pulse_exponential', 'Square pulse', 'Right-sided exponential', false],
+  ['d3_squarewave_exponential', 'One period of a square wave', 'Right-sided exponential', false],
+  ['d4_impulse_squarewave', 'Unit Impulse', 'One period of a square wave', false],
+  ['d5_drawn_exponential', 'Clear', 'Right-sided exponential', true]
+];
+function press(app, which, tip) {
+  var list = app.buttons[which], panel = which === 'x' ? app.xInputPanel : app.hInputPanel;
+  for (var k = 0; k < list.length; k++) if (list[k].tip === tip) app.pressPreset(list[k], panel);
+}
+function runScenario(app, sc, lastStep) {
+  press(app, 'x', sc[1]);
+  press(app, 'h', sc[2]);
+  if (sc[3]) {   // press then drag a rising line across the right half of the x panel
+    var p = app.xInputPanel, w = p.bw, h = p.bh, ml = p.mouseListener;
+    ml.mousePressed(Math.trunc(w / 2), Math.trunc(h / 2));
+    for (var i = 1; i <= 20; i++)
+      ml.mouseDragged(Math.trunc(w / 2) + Math.trunc(i * (Math.trunc(w / 2) - 4) / 20),
+                      Math.trunc(h / 2) - Math.trunc(i * Math.trunc(h / 4) / 20));
+  }
+  if (lastStep === 'a') return;
+  var d = app.xhDualPanel.mouseListener, pw = app.xhDualPanel.bw;
+  var stops = [Math.trunc(pw / 4), Math.trunc(pw / 2), Math.trunc(3 * pw / 4), pw - 2];
+  d.mousePressed(1);
+  var prev = 1, tags = 'bcde';
+  for (var k = 0; k < stops.length; k++) {
+    for (var x = prev + 1; x <= stops[k]; x++) d.mouseDragged(x);
+    prev = stops[k];
+    if (tags[k] === lastStep) return;
+  }
+}
+function dumpSig(s) {
+  return { xmin: s.getXMin(), xmax: s.getXMax(), maxIndex: s.getMaxIndex(), data: s.getDataArrayCopy() };
+}
+function dump(app) {
+  return { n: app.xhDualPanel.getN(), x: dumpSig(app.xInputPanel.getSignal()), h: dumpSig(app.hInputPanel.getSignal()),
+    dual_signal1: dumpSig(app.xhDualPanel.getSignal1()), dual_signal2: dumpSig(app.xhDualPanel.getSignal2()),
+    product: dumpSig(app.xhOutputPanel.getSignal()), y: dumpSig(app.yOutputPanel.getSignal()),
+    product_axes: [app.xhOutputPanel.minY, app.xhOutputPanel.maxY], y_axes: [app.yOutputPanel.minY, app.yOutputPanel.maxY],
+    reset: app.reset };
+}
+function selfTest(app) {
+  var out = { source: 'joy_of_convolution_dt.html #selftest', scenarios: {} };
+  for (var i = 0; i < SCENARIOS.length; i++) {
+    runScenario(app, SCENARIOS[i], null);
+    out.scenarios[SCENARIOS[i][0]] = dump(app);
+  }
+  document.getElementById('selftest-out').textContent = JSON.stringify(out);
+}
+function shot(app, spec) {
+  var parts = spec.split(':'), name = parts[0], step = parts[1] || 'e';
+  for (var i = 0; i < SCENARIOS.length; i++) {
+    var last = SCENARIOS[i][0] === name;
+    runScenario(app, SCENARIOS[i], last ? step : null);
+    if (last) return;
+  }
+}
+
+// ---------------------------------------------------------------------------------------
+// Start-up and scaling (as on the CT page): fit the window height and the text column.
+// ---------------------------------------------------------------------------------------
+var hash = location.hash, bare = hash.indexOf('#shot=') === 0;
+if (bare) document.documentElement.classList.add('bare');
+var app = new DTConvolve(document.getElementById('applet'));
+window.JOC = { applet: app, Signal: Signal, SCENARIOS: SCENARIOS, runScenario: runScenario, dump: dump };
+
+function fit() {
+  var z = 1;
+  if (!bare) {
+    var avail = document.getElementById('page').clientWidth - 24;
+    z = Math.min((window.innerHeight - 16) / 604, avail / 604);
+    z = Math.max(0.5, Math.min(z, 2.5));
+  }
+  app.layout(z, bare ? 1 : (window.devicePixelRatio || 1));
+}
+var resizeTimer = 0;
+window.addEventListener('resize', function () { clearTimeout(resizeTimer); resizeTimer = setTimeout(fit, 60); });
+
+if (hash === '#selftest') selfTest(new DTConvolve(document.createElement('div')));
+if (bare && hash.slice(6) !== 'd0_initial') shot(app, hash.slice(6));
+// Draw synchronously: headless Chrome may run no animation frames before it dumps the page.
+fit();
+</script>
+</body>
+</html>

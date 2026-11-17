@@ -103,6 +103,11 @@ white in appletviewer; the JHU page put the applet in a `#C0C0C0` table cell.
   x = 61, 109, 157, 205, 253 / 357, 405, 453, 501, 549) · "x[n-k] and h[k]" 9,195,582,126 ·
   "x[n-k]h[k]" 9,331,582,126 · y[n] 9,467,582,126. Grey (Swing default) background; the icon
   labels have raised bevel borders.
+- Read from the bytecode (2026-11-17; details in QUIRKS.md "Discrete time"): x/h are
+  `Signal(-12, 12, 24)` (n = −12..11), the wide panels `Signal(-24, 24, 48)`; n from a click is
+  `(int)(48·x/582 − 24)`; y-axis autoscale in `updateOutputPanels` (a double flip makes it the
+  correlation's range); the y panel draws `definition.gif` (153 × 44, y[n] = Σ h[k] x[n−k]) at its
+  top-left, fetched 2026-11-17 into `reference/dt/`.
 - Presets (tooltips): Square pulse, One period of a square wave, Right-sided exponential,
   Unit Impulse, Clear. Button faces are `x_*.gif` / `h_*.gif` loaded from the codebase.
 - Stem plots; fixed axes ±5 for x/h/dual, ±10 for product and y; n axis −12..12 (constants

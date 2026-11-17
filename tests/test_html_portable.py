@@ -20,7 +20,7 @@ import unittest
 import ct_model
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-PAGES = [ROOT / "joy_of_convolution.html", ROOT / "index.html"]
+PAGES = [ROOT / "joy_of_convolution.html", ROOT / "index.html", ROOT / "joy_of_convolution_dt.html"]
 CT = PAGES[0]
 ORACLE = ROOT / "reference" / "captures" / "ct"
 # The only URLs allowed in the pages: plain links back to the original JHU site.

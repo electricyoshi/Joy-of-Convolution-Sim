@@ -36,16 +36,29 @@ Michael Ross 2001), for a Seattle Pacific University course. Sibling and style m
 - First paint is synchronous (`fit()` at the end of the script): headless Chrome may run no
   animation frames before `--dump-dom`. Later repaints are coalesced with rAF.
 
+## The DT page (`joy_of_convolution_dt.html`)
+- Same shell as the CT page (Graphics stand-in, `fit()`, hash modes, `window.JOC`, synchronous
+  first paint). Classes transcribe the **bytecode** (`reference/dt/javap/`), original names kept.
+  Values are doubles; Java `Math.round` = JS `Math.round`, `(int)` = `Math.trunc` (`jround`,
+  `d2i`). Equality with the original is exact, so keep operation order as in the bytecode.
+- `MyMouseListener` in the JAR is unused (the panels use `MyMouseGraphListener`); not ported.
+- The y panel's `'//definition'` label triggers drawing the equation (the original loads an
+  image named there); `drawDefinition` redraws it as text. Preset icons are our own schematic
+  stem plots (`ICONS`, `paintIcon`); their canvases are only the 29 x 21 icon, inside a bordered
+  `<button>` whose hover colour is the signal colour (SignalClickListener).
+- Whole-applet repaint per event (cheap); `DTConvolve.repaint` coalesces with rAF.
+
 ## Tests and checks
 - `py -m unittest discover -s tests -v` (stdlib; browser tests skip without Chrome/Edge).
   `tests/ct_model.py` is an independent Python transcription of the Java math.
   `test_model.py`: analytic checks (triangle, closed-form pulse*decay) + model == original's
   JSON (skipped without `reference/`). `test_html_portable.py`: static portability and
   credits; headless load with no error and 13 canvases painted; real PointerEvents at z != 1;
-  `#selftest` == model == original.
-- `py tools/compare_ct.py` (Pillow): screenshots every `#shot` at 1x and writes
-  original | port | diff sheets to `reference/captures/compare/ct/`. Currently < 1 % of pixels
-  differ (text antialiasing, steep pulse edges, the redrawn equation).
+  `#selftest` == model == original. `test_dt.py`: the same for DT (`tests/dt_model.py`, a
+  Python transcription of the bytecode; y[n] == direct convolution sum; autoscale quirks).
+- `py tools/compare.py ct|dt` (Pillow): screenshots every `#shot` at 1x and writes
+  original | port | diff sheets to `reference/captures/compare/<ct|dt>/`. Currently < 1 % (CT)
+  and ~1.7 % (DT) of pixels differ: text antialiasing, steep edges, redrawn equation/icons.
 - README screenshot `docs/ct-port.png`: a scratch copy of the page with a script appended that
   runs `JOC.runScenario(JOC.applet, JOC.SCENARIOS[2], 'c')`, drags to x = 300, then
   `JOC.applet.layout(1.15, 1)`; headless Chrome at 1280x1500, cropped to the white applet box.
@@ -101,4 +114,10 @@ Michael Ross 2001), for a Seattle Pacific University course. Sibling and style m
   scenarios, tests green. Waiting for Jon's CHECKLIST.md run on Windows and Mac, and his check of
   the transcripts against the audio (the page's text was cleaned up from Whisper
   `*_pass2.txt`, which fixed pass 1's invented sentences in ct_exercises).
-- Next: Phase 2, DT port (from `reference/dt/javap/`). The JDK is still needed for that.
+- **Phase 2 (DT) first port done 2026-11-17**: values identical to the original (every double,
+  axes, n, reset) in all 5 DtProbe scenarios. DtProbe now also records the autoscaled axes and
+  `reset`; `definition.gif` was fetched (Claude-in-Chrome) so its captures show the y equation.
+- Waiting on Jon: CHECKLIST.md on Windows + Mac (both pages), transcripts vs audio (CT and DT).
+- Next: Phase 4 accessibility polish, then Phase 5 after permission. The JDK is only needed
+  for re-capturing; **uninstall it once Jon has signed off the ports**
+  (`winget uninstall EclipseAdoptium.Temurin.8.JDK`).

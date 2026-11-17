@@ -41,7 +41,7 @@ their code, and the transcripts and quiz reproduce their text, so all of it is a
 ## Deliverables
 ```
 joy_of_convolution.html      CT page: the whole original page, with the applet as a canvas
-joy_of_convolution_dt.html   DT page, same treatment
+joy_of_convolution_dt.html   DT page, same treatment (done, first port)
 index.html                   tiny Pages landing page linking both (the README is the GitHub landing page)
 README.md                    credits first, screenshots, "Run it" links, things to try, offline copy
 docs/*.png                   README screenshots
@@ -100,9 +100,9 @@ the MP3 links, the applet, the quiz, and credits.
 - Anything in the original that looks like a bug: **keep it** and list it for Jon and the course professor.
   Don't fix it silently.
 
-### Phase 2: DT port
-Same approach, from the `javap` output plus appletviewer screenshots. Expect a 600×600 layout,
-stem plots, and Ross's 2001 changes. Plan the details once the JAR is opened.
+### Phase 2: DT port (first port done 2026-11-17; hands-on check pending)
+Same approach, transcribed from the `javap` output (no source survives) and checked against
+DtProbe's values and captures. Quirks and deviations: [QUIRKS.md](QUIRKS.md).
 
 ### Phase 3: Verification (`py -m unittest discover -s tests -v`, stdlib only)
 - `test_model.py`: a Python transcription of the Java math (int arithmetic, exactly as written)
@@ -145,6 +145,6 @@ Header line, e.g.: *"The Joy of Convolution" by Steven Crutchfield, Johns Hopkin
 
 ## Open items for Jon
 - Done: files saved (2026-11-17), including the 10 DT button GIFs (fetched via Claude-in-Chrome).
-- Check the cleaned-up CT narration transcripts on the page against the audio (tidied 2026-11-17).
+- Check the cleaned-up narration transcripts on both pages against the audio (tidied 2026-11-17).
 - Done: repo created and pushed 2026-11-17 (public dev repo, as approved).
-- Run [CHECKLIST.md](CHECKLIST.md) on a Windows and a Mac laptop.
+- Run [CHECKLIST.md](CHECKLIST.md) on a Windows and a Mac laptop (both pages).

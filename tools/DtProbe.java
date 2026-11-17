@@ -175,6 +175,13 @@ public class DtProbe {
         return sb.append("]}").toString();
     }
 
+    static String axes(Object panel) throws Exception {
+        Class<?> gp = panel.getClass().getSuperclass();   // DTConvolve.GraphPanel
+        Field lo = gp.getDeclaredField("minY"), hi = gp.getDeclaredField("maxY");
+        lo.setAccessible(true); hi.setAccessible(true);
+        return "[" + lo.get(panel) + ", " + hi.get(panel) + "]";
+    }
+
     static void writeJson(String name) throws Exception {
         Object dual = field("xhDualPanel");
         PrintWriter w = new PrintWriter(new File(outDir, name + ".json"), "UTF-8");
@@ -186,7 +193,11 @@ public class DtProbe {
         w.println("  \"dual_signal1\": " + sigJson(dual, "getSignal1") + ",");
         w.println("  \"dual_signal2\": " + sigJson(dual, "getSignal2") + ",");
         w.println("  \"product\": " + sigJson(field("xhOutputPanel"), "getSignal") + ",");
-        w.println("  \"y\": " + sigJson(field("yOutputPanel"), "getSignal"));
+        w.println("  \"y\": " + sigJson(field("yOutputPanel"), "getSignal") + ",");
+        // The autoscaled y axes of the two lower panels (GraphPanel.minY/maxY) and the reset flag.
+        w.println("  \"product_axes\": " + axes(field("xhOutputPanel")) + ",");
+        w.println("  \"y_axes\": " + axes(field("yOutputPanel")) + ",");
+        w.println("  \"reset\": " + field("reset"));
         w.println("}");
         w.close();
     }

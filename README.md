@@ -20,12 +20,17 @@
 - **Continuous time:** a first faithful port is done (`joy_of_convolution.html`) and is
   waiting for hands-on checks ([CHECKLIST.md](CHECKLIST.md)). Its arithmetic matches the original applet's
   bit for bit in scripted tests; what differs on purpose is listed in [QUIRKS.md](QUIRKS.md).
-- **Discrete time:** not started.
+- **Discrete time:** a first faithful port is done too (`joy_of_convolution_dt.html`), from
+  the original's compiled code (no source survives). Its values match the original's exactly in
+  scripted tests. Also waiting for hands-on checks.
 
 ![The continuous-time port, part way through convolving a double pulse with a decaying exponential](docs/ct-port.png)
 
-To try it during development: download or clone the repository and double-click
-`joy_of_convolution.html`. It is a single file with nothing to install and no network access.
+![The discrete-time port, part way through convolving a square wave with an exponential](docs/dt-port.png)
+
+To try them during development: download or clone the repository and double-click
+`joy_of_convolution.html` or `joy_of_convolution_dt.html` (or `index.html`). Each is a single
+file with nothing to install and no network access.
 
 Tests (Python 3, standard library only; the browser tests use Chrome or Edge if installed):
 

@@ -54,4 +54,47 @@ The arithmetic: presets, freehand drawing, the Riemann sum, the integrand and th
 mask are bit-for-bit equal to the original's arrays in five scripted scenarios
 (`py -m unittest discover -s tests -v`; needs the local reference captures). The panel geometry
 is the original's GridBag result to the pixel. Under 1 % of pixels differ from the original's
-captures, all in text and in the steep edges of pulses (`py tools/compare_ct.py`).
+captures, all in text and in the steep edges of pulses (`py tools/compare.py ct`).
+
+## Discrete time (`joy_of_convolution_dt.html`)
+
+No source code for the 2001 applet survives. The port was transcribed from its compiled code
+(`javap -c` of `DTConvolve.jar`), and a separate Python transcription checks the reading.
+
+### Original behavior, kept on purpose
+1. **The y[n] axis is scaled to the wrong quantity.** When x or h changes, the applet picks the
+   y[n] axis from the largest value of a sum that flips x twice, i.e. the *cross-correlation* of x
+   and h rather than their convolution. When the two differ, y[n] can run past its axis (the
+   drawn freehand ramp ∗ exponential in our tests reaches 10.4 on a ±10 axis) or the axis is
+   larger than needed. The summand axis is scaled from the products of x's and h's extremes.
+2. **The axes never shrink back while drawing.** The scaling uses the largest and smallest values
+   ever written into x or h since the last preset, even if they were drawn over afterwards.
+3. **The n = 0 click zone is twice as wide** as the others: n is computed with a truncating
+   `(int)` cast, so everything from about −0.99 to +0.99 is n = 0. The n marker sits at the
+   left edge of each positive n's zone and the right edge of each negative n's.
+4. **Dragging walks n through every value** between the lowest n reached so far in the drag and
+   the current one, revealing y[n] at each. Dragging left therefore leaves the marker one step
+   behind the pointer.
+5. **y[n] is revealed only at the n values visited**; elsewhere it is drawn as 0 (a dot on the
+   axis), not hidden. Any change to x or h clears the three lower panels until the next click.
+6. **The rightmost stem of every panel is always 0** (it is one sample past the end of the data),
+   and x and h can't be drawn at n = 12.
+7. **Drawing isn't clamped**: dragging above or below the x[n] or h[n] panel stores values off the
+   ±5 scale.
+8. The preset buttons are labels with a grey border that turns green (x) or blue (h) under the
+   mouse; they act on mouse press.
+
+### Deliberate deviations in the port
+1. Scaled to the window and redrawn at screen resolution, as on the CT page.
+2. **No JHU images or audio.** The ten preset icons are redrawn by our own code as small
+   schematic stem plots (like the originals); the y[n] equation image is redrawn as text; the page
+   equation is MathML; audio became transcripts; the quiz PDF became a section of the page.
+3. Panels are white on the Swing grey (238) background, as in the reference captures.
+4. Credit and "work in progress" bars; centred text column; missing spaces restored; the preset
+   buttons are keyboard-operable; a hidden live text gives n and y[n] to screen readers.
+
+### What is identical
+x, h, x[n − k], h[k], the summand, y[n], n, both autoscaled axes and the reset state equal the
+original's exactly (to the last bit of every double) in five scripted scenarios. Panel geometry
+is the original's GridBag result. About 1.7 % of pixels differ from the original's captures:
+text antialiasing, the redrawn icons and equation (`py tools/compare.py dt`).
