@@ -47,11 +47,15 @@ would be an opt-in enhancement (ENHANCEMENT_OPTIONS.md).
 6. Missing spaces in the saved original page text ("…of v.Then…", "below,or") are restored.
 7. **Accessibility extras that don't change the look:** the preset buttons are real buttons
    (Tab + Enter/Space work), and a visually hidden live text gives t and y(t) to screen readers.
-8. **Touch and pen work** (Pointer Events). Touching the applet doesn't scroll the page.
+8. **Touch and pen work** (Pointer Events). Touching the applet doesn't scroll the page. Like the
+   original's single mouse, **one pointer at a time** drives the applet: a second finger is ignored
+   until the first one lifts (otherwise two fingers would splice their strokes into one drag).
 
 ### What is identical
 The arithmetic: presets, freehand drawing, the Riemann sum, the integrand and the revealed-y
-mask are bit-for-bit equal to the original's arrays in five scripted scenarios
+mask are bit-for-bit equal to the original's arrays in eight scripted scenarios: five preset
+sweeps, plus drawing on h and over a preset, strokes and t sweeps that go leftward and outside
+the panels, the cleared state after a change, and single clicks
 (`py -m unittest discover -s tests -v`; needs the local reference captures). The panel geometry
 is the original's GridBag result to the pixel. Under 1 % of pixels differ from the original's
 captures, all in text and in the steep edges of pulses (`py tools/compare.py ct`).
@@ -92,9 +96,11 @@ No source code for the 2001 applet survives. The port was transcribed from its c
 3. Panels are white on the Swing grey (238) background, as in the reference captures.
 4. Credit and "work in progress" bars; centred text column; missing spaces restored; the preset
    buttons are keyboard-operable; a hidden live text gives n and y[n] to screen readers.
+5. Touch and pen work, one pointer at a time, as on the CT page.
 
 ### What is identical
 x, h, x[n − k], h[k], the summand, y[n], n, both autoscaled axes and the reset state equal the
-original's exactly (to the last bit of every double) in five scripted scenarios. Panel geometry
+original's exactly (to the last bit of every double) in eight scripted scenarios (the same kinds
+as for CT, including drawing far off the panel, which grows the axes). Panel geometry
 is the original's GridBag result. About 1.7 % of pixels differ from the original's captures:
 text antialiasing, the redrawn icons and equation (`py tools/compare.py dt`).

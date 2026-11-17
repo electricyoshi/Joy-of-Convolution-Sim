@@ -52,7 +52,7 @@
   #credits ul { margin: 4px 0 8px; padding-left: 20px; }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   /* #shot mode: only the applet, unscaled, at the top left, for pixel comparisons
-     with the original's captures (tools/compare_ct.py). */
+     with the original's captures (tools/compare.py). */
   html.bare body { background: #FFFFFF; }
   html.bare #credit-bar, html.bare #page > :not(#frame), html.bare #page { padding: 0; margin: 0; }
   html.bare #credit-bar, html.bare #page > :not(#frame) { display: none; }
@@ -655,6 +655,8 @@ class Convolve {
     this.root = root;
     this.comps = [];
     this.labels = [];
+    this.pointer = null;   // { id, comp } while a pointer is pressed in the applet
+    this.releases();
     this.signalX = this.controllable('x(t)', LAYOUT.x, LAYOUT.xSelect, LAYOUT.xButtons, Color.blue);
     this.signalH = this.controllable('h(t)', LAYOUT.h, LAYOUT.hSelect, LAYOUT.hButtons, Color.red);
     this.signalInt = this.add(new SigPanel(LAYOUT.integ, 'x(t - v) h(v)', 'v', Color.black, true));
@@ -697,33 +699,47 @@ class Convolve {
 
   // AWT 1.0 sends mouseDown on press and mouseDrag for every move while the button is held,
   // even outside the panel. Pointer capture gives the same, for mouse, pen and touch.
+  // The original had one mouse, so one pointer at a time drives the applet: a second finger
+  // would otherwise splice its strokes into the first one's drag.
   mouse(comp) {
-    var cv = comp.el, down = false;
+    var app = this, cv = comp.el;
     function local(e) {
       var r = cv.getBoundingClientRect();
       return { x: Math.floor((e.clientX - r.left) * comp.bw / r.width),
                y: Math.floor((e.clientY - r.top) * comp.bh / r.height) };
     }
     cv.addEventListener('pointerdown', function (e) {
-      if (e.button !== 0) return;
+      if (e.button !== 0 || !app.mayPress(e)) return;
       e.preventDefault();
       try { cv.setPointerCapture(e.pointerId); } catch (err) { /* old Safari: fine without */ }
-      down = true;
+      app.pointer = { id: e.pointerId, comp: comp };
       var p = local(e); comp.mouseDown(p.x, p.y);
     });
     cv.addEventListener('pointermove', function (e) {
-      if (!down) return;
+      var held = app.pointer;
+      if (!held || held.id !== e.pointerId || held.comp !== comp) return;
+      // No button down: the release happened where we couldn't see it (capture failed).
+      if (e.buttons === 0) { app.pointer = null; return; }
       var p = local(e); comp.mouseDrag(p.x, p.y);
     });
-    function up() { down = false; }
-    cv.addEventListener('pointerup', up);
-    cv.addEventListener('pointercancel', up);
-    cv.addEventListener('lostpointercapture', up);
+  }
+  // A press is ignored while another pointer is down, except from the mouse: a new mouse
+  // press proves the old one was released, so a lost release can't lock the applet.
+  mayPress(e) { return !this.pointer || this.pointer.id === e.pointerId || e.pointerType === 'mouse'; }
+  // Releases are watched on the window: with capture they arrive wherever the pointer is.
+  releases() {
+    var app = this;
+    function up(e) { if (app.pointer && app.pointer.id === e.pointerId) app.pointer = null; }
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
   }
   // The original buttons act on mouse press. Keyboard Enter/Space arrives as a click with
   // detail 0, which pointer presses never produce.
   button(b) {
-    b.el.addEventListener('pointerdown', function (e) { if (e.button === 0) { e.preventDefault(); b.mouseDown(); } });
+    var app = this;
+    b.el.addEventListener('pointerdown', function (e) {
+      if (e.button === 0 && app.mayPress(e)) { e.preventDefault(); b.mouseDown(); }
+    });
     b.el.addEventListener('click', function (e) { if (e.detail === 0) b.mouseDown(); });
   }
   layout(z, dpr) {
@@ -758,14 +774,29 @@ class Convolve {
 // Scripted scenarios: the same user actions tools/CtProbe.java performs on the original
 // applet. #selftest runs them all and prints the arrays as JSON (tests/ compares them with
 // the original's); #shot=<scenario>:<step> stops at one capture point, unscaled, for
-// tools/compare_ct.py. Steps: a = signals chosen, b..e = t swept to 1/4, 1/2, 3/4, end.
+// tools/compare.py. Steps: a = signals chosen, b..e = t swept to 1/4, 1/2, 3/4, end.
+// The [name, actions] scenarios are lists of user actions (same lists as CtProbe and
+// tests/ct_model.py): ['preset', 'x'|'h', name] presses a button; ['down'|'drag',
+// 'x'|'h'|'conv', x, y] is a mouse press or drag in panel pixels, possibly outside the panel.
 // ---------------------------------------------------------------------------------------
 var SCENARIOS = [
   ['s1_pulse_pulse', 'pulse', 'pulse', null],
   ['s2_pulse_decay', 'pulse', 'decay', null],
   ['s3_doublepulse_decay', 'double pulse', 'decay', null],
   ['s4_decay_doublepulse', 'decay', 'double pulse', null],
-  ['s5_drawn_pulse', 'clear', 'pulse', 'ramp']
+  ['s5_drawn_pulse', 'clear', 'pulse', 'ramp'],
+  ['s7_left_and_outside', [
+    ['preset', 'x', 'pulse'], ['preset', 'h', 'clear'],
+    ['down', 'h', 120, 30], ['drag', 'h', 90, 90], ['drag', 'h', 60, -40], ['drag', 'h', 30, 200],
+    ['drag', 'h', -20, 62],
+    ['down', 'h', 200, 62], ['drag', 'h', 250, -10], ['drag', 'h', 250, 50],
+    ['down', 'x', 30, 100], ['drag', 'x', 60, 100],
+    ['down', 'conv', 400, 0], ['drag', 'conv', 350, 0], ['drag', 'conv', 200, 0],
+    ['drag', 'conv', 100, 0], ['drag', 'conv', -50, 0],
+    ['down', 'conv', 450, 0], ['drag', 'conv', 600, 0], ['drag', 'conv', 470, 0]]],
+  ['s8_cleared', [['preset', 'x', 'decay']]],
+  ['s9_clicks', [['down', 'conv', 300, 0], ['down', 'conv', 100, 0],
+                 ['down', 'conv', 473, 0], ['down', 'conv', 0, 0]]]
 ];
 function press(ctl, which) {
   for (var k = 0; k < ctl.buttons.length; k++)
@@ -773,6 +804,14 @@ function press(ctl, which) {
 }
 function runScenario(app, sc, lastStep) {
   var conv = app.fConvPanel, W = conv.fSigLength;
+  if (Array.isArray(sc[1])) {   // a list of actions (no intermediate steps)
+    sc[1].forEach(function (a) {
+      if (a[0] === 'preset') return press(a[1] === 'x' ? app.signalX : app.signalH, a[2]);
+      var comp = a[1] === 'conv' ? conv : a[1] === 'x' ? app.signalX.panel : app.signalH.panel;
+      if (a[0] === 'down') comp.mouseDown(a[2], a[3]); else comp.mouseDrag(a[2], a[3]);
+    });
+    return;
+  }
   var stops = [idiv(W, 4), idiv(W, 2), idiv(3 * W, 4), W - 1];
   press(app.signalX, sc[1]);
   press(app.signalH, sc[2]);
@@ -810,12 +849,16 @@ function selfTest(app) {
 function shot(app, spec) {
   var parts = spec.split(':'), name = parts[0], step = parts[1] || 'e';
   if (name === 's0_initial') return;
+  // A mistyped name would otherwise run every scenario and screenshot the wrong state.
+  var known = name === 's6_single_click' || SCENARIOS.some(function (s) { return s[0] === name; });
+  if (!known) throw new Error('unknown #shot scenario "' + name + '"');
   for (var i = 0; i < SCENARIOS.length; i++) {
     var last = SCENARIOS[i][0] === name;
     runScenario(app, SCENARIOS[i], last ? step : null);
     if (last) return;
   }
-  if (name === 's6_single_click') {   // after s1..s5: fresh presets and one click at t = 0
+  // After every scenario (the probe runs it after s5): the presets reset all that matters.
+  if (name === 's6_single_click') {   // fresh presets and one click at t = 0
     press(app.signalX, 'pulse'); press(app.signalH, 'decay');
     app.fConvPanel.mouseDown(idiv(app.fConvPanel.fSigLength, 2), 0);
   }

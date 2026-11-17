@@ -6,15 +6,13 @@
 3. In headless Chrome: the page loads without error and draws every panel, real
    PointerEvents drive it, and #selftest == model (== original when present).
 """
-import html
 import json
 import pathlib
 import re
-import tempfile
 import unittest
 
 import dt_model as m
-from test_html_portable import dump_dom, find_browser
+from test_html_portable import dump_dom, error_text, find_browser, run_probe, selftest_out
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DT = ROOT / "joy_of_convolution_dt.html"
@@ -87,12 +85,19 @@ class Model(unittest.TestCase):
         self.assertIn(len(zero), (24, 25))
 
 
+
+def oracle(name):
+    f = ORACLE / f"{name}.json"
+    assert f.is_file(), f"{f.name} missing: re-run tools/DtProbe.java (CLAUDE.md)"
+    return json.loads(f.read_text(encoding="utf-8"))
+
+
 @unittest.skipUnless(ORACLE.is_dir(), "original applet captures not present (reference/ is local only)")
 class ModelMatchesOriginal(unittest.TestCase):
     def test_every_scenario_is_identical(self):
         mine = m.all_scenarios()
-        for name, *_ in m.SCENARIOS:
-            ref = json.loads((ORACLE / f"{name}.json").read_text(encoding="utf-8"))
+        for name in m.scenario_names():
+            ref = oracle(name)
             for key, val in mine[name].items():
                 self.assertEqual(val, ref[key], f"{name}.{key}")
 
@@ -100,12 +105,7 @@ class ModelMatchesOriginal(unittest.TestCase):
 @unittest.skipUnless(find_browser(), "needs Chrome, Edge or Chromium installed")
 class InBrowser(unittest.TestCase):
     def no_error(self, dom):
-        mm = re.search(r'<div id="err"[^>]*>(.*?)</div>', dom, re.S)
-        self.assertIsNotNone(mm)
-        self.assertEqual(mm.group(1).strip(), "", "page shows a script error")
-
-    def out(self, dom):
-        return json.loads(html.unescape(re.search(r'<pre id="selftest-out"[^>]*>(.*?)</pre>', dom, re.S).group(1)))
+        self.assertEqual(error_text(dom), "", "page shows a script error")
 
     def test_page_loads_and_draws_every_panel(self):
         dom = dump_dom(DT)
@@ -115,33 +115,27 @@ class InBrowser(unittest.TestCase):
         self.assertEqual(int(mm.group(1)), 2 + 10 + 3)   # x, h, 10 preset buttons, 3 wide panels
 
     def test_shot_mode_runs(self):
-        self.no_error(dump_dom(DT, "#shot=d3_squarewave_exponential:c"))
+        for spec in ("d3_squarewave_exponential:c", "d0_initial", "d6_left_and_outside"):
+            self.no_error(dump_dom(DT, "#shot=" + spec))
 
     def test_selftest_matches_reference_model_and_original(self):
         dom = dump_dom(DT, "#selftest")
         self.no_error(dom)
-        got = self.out(dom)["scenarios"]
+        got = selftest_out(dom)["scenarios"]
         model = m.all_scenarios()
-        for name, *_ in m.SCENARIOS:
+        self.assertEqual(sorted(got), sorted(m.scenario_names()))
+        for name in m.scenario_names():
             for key, val in model[name].items():
                 self.assertEqual(got[name][key], val, f"page vs model: {name}.{key}")
             if ORACLE.is_dir():
-                ref = json.loads((ORACLE / f"{name}.json").read_text(encoding="utf-8"))
+                ref = oracle(name)
                 for key in model[name]:
                     self.assertEqual(got[name][key], ref[key], f"page vs original: {name}.{key}")
 
     def test_pointer_events_drive_the_applet(self):
         # Real PointerEvents at screen coordinates on the scaled applet (z != 1).
-        probe = """<script>
-        (function () {
+        got, err = run_probe(DT, """
           var a = JOC.applet, out = {};
-          function at(comp, lx, ly) {
-            var r = comp.el.getBoundingClientRect();
-            return { clientX: r.left + (lx + 0.5) * r.width / comp.bw,
-                     clientY: r.top + (ly + 0.5) * r.height / comp.bh,
-                     button: 0, pointerId: 1, bubbles: true };
-          }
-          function fire(comp, type, lx, ly) { comp.el.dispatchEvent(new PointerEvent(type, at(comp, lx, ly))); }
           out.z = a.root.getBoundingClientRect().width / 600;
           fire(a.buttons.x[2], 'pointerdown', 5, 5);                 // x: exponential
           fire(a.buttons.h[1], 'pointerdown', 5, 5);                 // h: square wave
@@ -154,16 +148,8 @@ class InBrowser(unittest.TestCase):
           fire(d, 'pointerup', 330, 60);
           fire(d, 'pointermove', 500, 60);                           // after release: ignored
           out.state = JOC.dump(a);
-          document.getElementById('selftest-out').textContent = JSON.stringify(out);
-        })();
-        </script></body>"""
-        src = DT.read_text(encoding="utf-8").replace("</body>", probe)
-        with tempfile.TemporaryDirectory() as tmp:
-            page = pathlib.Path(tmp) / "probe.html"
-            page.write_text(src, encoding="utf-8")
-            dom = dump_dom(page)
-        self.no_error(dom)
-        got = self.out(dom)
+          done(out);""")
+        self.assertEqual(err, "")
         self.assertNotAlmostEqual(got["z"], 1.0, places=2)
         a = m.Applet()
         a.preset("x", "Right-sided exponential"); a.preset("h", "One period of a square wave")

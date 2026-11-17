@@ -31,8 +31,17 @@ Michael Ross 2001), for a Seattle Pacific University course. Sibling and style m
 - `window.onerror` lives in its own `<script>` before the main one, so a parse error in the
   main script still shows the red `#err` bar.
 - Hash modes: `#selftest` runs the CtProbe scenarios in a hidden second applet and writes JSON to
-  `#selftest-out`; `#shot=<scenario>:<a-e>` shows only the applet at 1x after that step.
-  `window.JOC` exposes the applet, `runScenario`, `dump` for tests and screenshots.
+  `#selftest-out`; `#shot=<scenario>:<a-e>` shows only the applet at 1x after that step (an
+  unknown name throws, so the red bar shows). `window.JOC` exposes the applet, `runScenario`,
+  `dump` for tests and screenshots.
+- `SCENARIOS`: s1-s5 are preset pairs + a rightward t sweep (steps a-e); s7-s9 are
+  `[name, actions]` lists (`['preset', 'x', name]`, `['down'|'drag', 'x'|'h'|'conv', x, y]`)
+  for leftward/outside drags, drawing on h, the cleared state, single clicks. **Each list exists
+  three times** (page, `tests/*_model.py`, `tools/*Probe.java`); a static test checks they agree.
+  Design rule: a scenario's end state must show what it tests (s7 once ended with a full sweep
+  that hid whether the leftward drag revealed anything; mutation testing caught it).
+- One pointer at a time (`pointer`, `mayPress`): a second finger is ignored; releases are
+  watched on `window`; a move with `buttons === 0` or any new mouse press ends a lost drag.
 - First paint is synchronous (`fit()` at the end of the script): headless Chrome may run no
   animation frames before `--dump-dom`. Later repaints are coalesced with rAF.
 
@@ -47,6 +56,8 @@ Michael Ross 2001), for a Seattle Pacific University course. Sibling and style m
   stem plots (`ICONS`, `paintIcon`); their canvases are only the 29 x 21 icon, inside a bordered
   `<button>` whose hover colour is the signal colour (SignalClickListener).
 - Whole-applet repaint per event (cheap); `DTConvolve.repaint` coalesces with rAF.
+- Scenarios d6-d8 are action lists like CT's s7-s9 (panel `'dual'` instead of `'conv'`); the
+  pointer handling is the CT page's.
 
 ## Tests and checks
 - `py -m unittest discover -s tests -v` (stdlib; browser tests skip without Chrome/Edge).
@@ -54,8 +65,16 @@ Michael Ross 2001), for a Seattle Pacific University course. Sibling and style m
   `test_model.py`: analytic checks (triangle, closed-form pulse*decay) + model == original's
   JSON (skipped without `reference/`). `test_html_portable.py`: static portability and
   credits; headless load with no error and 13 canvases painted; real PointerEvents at z != 1;
-  `#selftest` == model == original. `test_dt.py`: the same for DT (`tests/dt_model.py`, a
-  Python transcription of the bytecode; y[n] == direct convolution sum; autoscale quirks).
+  `#selftest` == model == original (all 8 scenarios); no JHU file tracked by git; the scenario
+  lists agree in page/model/probe. It also holds the shared browser helpers (`run_probe`
+  appends a script to a temp copy of a page; `POINTER_JS` `fire()` sends PointerEvents with
+  real `buttons`). `test_dt.py`: the same for DT (`tests/dt_model.py`, a Python transcription
+  of the bytecode; y[n] == direct convolution sum; autoscale quirks). `test_ui.py`, both pages:
+  keyboard presets, one pointer at a time, lost releases, rAF repaint + readout (probes queue
+  rAF themselves; headless may run no frame), `layout()`, the `#shot` guard, and drawing:
+  pixels where the model puts each sample have the signal's colour (works without `reference/`).
+- Mutation check used in the 2026-11-17 review: inject a bug into a page, run the suite, restore
+  (8 of 8 caught). Repeat it when adding tests: a test that never fails proves nothing.
 - `py tools/compare.py ct|dt` (Pillow): screenshots every `#shot` at 1x and writes
   original | port | diff sheets to `reference/captures/compare/<ct|dt>/`. Currently < 1 % (CT)
   and ~1.7 % (DT) of pixels differ: text antialiasing, steep edges, redrawn equation/icons.
@@ -117,7 +136,12 @@ Michael Ross 2001), for a Seattle Pacific University course. Sibling and style m
 - **Phase 2 (DT) first port done 2026-11-17**: values identical to the original (every double,
   axes, n, reset) in all 5 DtProbe scenarios. DtProbe now also records the autoscaled axes and
   `reset`; `definition.gif` was fetched (Claude-in-Chrome) so its captures show the y equation.
-- Waiting on Jon: CHECKLIST.md on Windows + Mac (both pages), transcripts vs audio (CT and DT).
+- **Review 2026-11-17** (REVIEW.md): no arithmetic defects; the oracle grew to 8 scenarios per
+  page (leftward/outside drags, h drawing, cleared state, clicks), all identical; fixed
+  multi-touch splicing, a lost release leaving a drag stuck, and silent bad `#shot` names.
+  Suite: 56 tests.
+- Waiting on Jon: CHECKLIST.md on Windows + Mac (both pages, incl. the new two-finger item),
+  transcripts vs audio (CT and DT).
 - Next: Phase 4 accessibility polish, then Phase 5 after permission. The JDK is only needed
   for re-capturing; **uninstall it once Jon has signed off the ports**
   (`winget uninstall EclipseAdoptium.Temurin.8.JDK`).

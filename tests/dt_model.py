@@ -155,7 +155,7 @@ class Applet:
         self.product_axes = [-5.0, 5.0]
         self.y_axes = [-5.0, 5.0]
         self.reset = True
-        self.old = (0.0, 0.0)                  # input-panel mouse listener's oldX, oldY
+        self.old = {"x": (0.0, 0.0), "h": (0.0, 0.0)}   # each input panel's listener oldX, oldY
         self.old_n = 0                         # dual-panel mouse listener's oldN
 
     # --- DTConvolve.updateOutputPanels: x or h changed --------------------------------
@@ -224,17 +224,18 @@ class Applet:
         sig = self.x if which == "x" else self.h
         x, y = self._xy(mx, my)
         sig.set_at(x, y)
-        self.old = (x, y)
+        self.old[which] = (x, y)
         self.update_output_panels()
 
     def draw_drag(self, which, mx, my):
         sig = self.x if which == "x" else self.h
         x, y = self._xy(mx, my)
-        if self.old[0] == x:
+        ox, oy = self.old[which]
+        if ox == x:
             sig.set_at(x, y)
         else:
-            sig.fill_range_linear(self.old[0], x, self.old[1], y)
-        self.old = (x, y)
+            sig.fill_range_linear(ox, x, oy, y)
+        self.old[which] = (x, y)
         self.update_output_panels()
 
     @staticmethod
@@ -284,9 +285,47 @@ def run_scenario(app, x_tip, h_tip, draw):
         prev = stop
 
 
+# Scenarios given as user actions, for what the preset sweeps never reach: drawing on h,
+# leftward strokes and n sweeps, everything outside the panels (the axes grow and never
+# shrink), the cleared state, single clicks. ("preset", "x"|"h", tooltip) presses a button;
+# ("down"|"drag", "x"|"h"|"dual", x, y) is a mouse press or drag in panel pixels. The same
+# lists are in tools/DtProbe.java and the page's SCENARIOS; they run after SCENARIOS.
+ACTION_SCENARIOS = [
+    ("d6_left_and_outside", [
+        ("preset", "x", "Square pulse"), ("preset", "h", "Clear"),
+        ("down", "h", 140, 30), ("drag", "h", 110, 100), ("drag", "h", 80, -60), ("drag", "h", 50, 200),
+        ("drag", "h", -30, 63),
+        ("down", "h", 220, 63), ("drag", "h", 300, -20), ("drag", "h", 300, 90),
+        ("down", "x", 60, 110), ("drag", "x", 20, 110),
+        ("down", "dual", 500, 63), ("drag", "dual", 450, 63), ("drag", "dual", 300, 63),
+        ("drag", "dual", 100, 63), ("drag", "dual", -40, 63),
+        ("down", "dual", 540, 63), ("drag", "dual", 650, 63), ("drag", "dual", 560, 63)]),
+    ("d7_cleared", [("preset", "x", "Unit Impulse")]),
+    ("d8_clicks", [("down", "dual", 300, 63), ("down", "dual", 100, 63),
+                   ("down", "dual", 581, 63), ("down", "dual", 0, 63)]),
+]
+
+
+def run_actions(app, actions):
+    for kind, which, *rest in actions:
+        if kind == "preset":
+            app.preset(which, rest[0])
+        elif which == "dual":
+            (app.dual_press if kind == "down" else app.dual_drag)(rest[0])
+        else:
+            (app.draw_press if kind == "down" else app.draw_drag)(which, rest[0], rest[1])
+
+
+def scenario_names():
+    return [s[0] for s in SCENARIOS] + [s[0] for s in ACTION_SCENARIOS]
+
+
 def all_scenarios():
     app, out = Applet(), {}
     for name, xt, ht, draw in SCENARIOS:
         run_scenario(app, xt, ht, draw)
+        out[name] = app.dump()
+    for name, actions in ACTION_SCENARIOS:
+        run_actions(app, actions)
         out[name] = app.dump()
     return out

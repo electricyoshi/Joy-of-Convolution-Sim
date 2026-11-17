@@ -171,9 +171,56 @@ def run_scenario(app, xp, hp, draw):
         prev = stop
 
 
+# Scenarios given as user actions, for what the preset sweeps never reach: drawing on h,
+# leftward strokes and t sweeps, everything outside the panels, the cleared state, single
+# clicks. ("preset", "x"|"h", name) presses a button; ("down"|"drag", "x"|"h"|"conv", x, y)
+# is a mouse press or drag in panel pixels. The same lists are in tools/CtProbe.java and the
+# page's SCENARIOS; they run after SCENARIOS, carrying state on.
+ACTION_SCENARIOS = [
+    ("s7_left_and_outside", [
+        ("preset", "x", "pulse"), ("preset", "h", "clear"),
+        ("down", "h", 120, 30), ("drag", "h", 90, 90), ("drag", "h", 60, -40), ("drag", "h", 30, 200),
+        ("drag", "h", -20, 62),
+        ("down", "h", 200, 62), ("drag", "h", 250, -10), ("drag", "h", 250, 50),
+        ("down", "x", 30, 100), ("drag", "x", 60, 100),
+        ("down", "conv", 400, 0), ("drag", "conv", 350, 0), ("drag", "conv", 200, 0),
+        ("drag", "conv", 100, 0), ("drag", "conv", -50, 0),
+        ("down", "conv", 450, 0), ("drag", "conv", 600, 0), ("drag", "conv", 470, 0)]),
+    ("s8_cleared", [("preset", "x", "decay")]),
+    ("s9_clicks", [("down", "conv", 300, 0), ("down", "conv", 100, 0),
+                   ("down", "conv", 473, 0), ("down", "conv", 0, 0)]),
+]
+
+
+def run_actions(app, actions):
+    prev = getattr(app, "prev", {})        # MouseSigPanel.prevX/prevY, one per panel
+    app.prev = prev
+    for kind, which, *rest in actions:
+        if kind == "preset":
+            app.press(which, rest[0])
+        elif which == "conv":
+            (app.conv_down if kind == "down" else app.conv_drag)(rest[0])
+        else:
+            sig = app.sx if which == "x" else app.sh
+            x, y = rest
+            if kind == "down":
+                sig.modify(x, y)
+            else:
+                sig.drag(prev[which][0], prev[which][1], x, y)
+            prev[which] = (x, y)
+            app.sig_changed_event()
+
+
+def scenario_names():
+    return [s[0] for s in SCENARIOS] + [s[0] for s in ACTION_SCENARIOS]
+
+
 def all_scenarios():
     app, out = Applet(), {}
     for name, xp, hp, draw in SCENARIOS:
         run_scenario(app, xp, hp, draw)
+        out[name] = app.dump()
+    for name, actions in ACTION_SCENARIOS:
+        run_actions(app, actions)
         out[name] = app.dump()
     return out

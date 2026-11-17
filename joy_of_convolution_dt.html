@@ -636,6 +636,8 @@ class DTConvolve {
     this.xColor = Color.green; this.hColor = Color.blue;
     this.reset = true;
     this.comps = []; this.labels = []; this.buttons = { x: [], h: [] };
+    this.pointer = null;   // { id, el } while a pointer is pressed in the applet
+    this.releases();
     this.xInputPanel = this.add(new InputGraphPanel(LAYOUT.x, -12.0, 12.0, -5.0, 5.0, 'x[n]', 'n', 24, Color.green, this));
     this.hInputPanel = this.add(new InputGraphPanel(LAYOUT.h, -12.0, 12.0, -5.0, 5.0, 'h[n]', 'n', 24, Color.blue, this));
     this.presetRow('x', this.xInputPanel, LAYOUT.xSelect, LAYOUT.xButtons, this.xColor);
@@ -687,28 +689,41 @@ class DTConvolve {
   }
   clicker(b, panel) {
     var self = this;
-    b.el.addEventListener('pointerdown', function (e) { if (e.button === 0) { e.preventDefault(); self.pressPreset(b, panel); } });
+    b.el.addEventListener('pointerdown', function (e) {
+      if (e.button === 0 && self.mayPress(e)) { e.preventDefault(); self.pressPreset(b, panel); }
+    });
     b.el.addEventListener('click', function (e) { if (e.detail === 0) self.pressPreset(b, panel); });   // keyboard
   }
   // Swing delivers mousePressed, then mouseDragged for every move while held, even outside.
+  // One pointer at a time drives the applet, as the original's one mouse did (see the CT page).
   mouse(el, onPress, onDrag, comp) {
-    var down = false;
+    var app = this;
     function local(e) {
       var r = el.getBoundingClientRect();
       return [Math.floor((e.clientX - r.left) * comp.bw / r.width), Math.floor((e.clientY - r.top) * comp.bh / r.height)];
     }
     el.addEventListener('pointerdown', function (e) {
-      if (e.button !== 0) return;
+      if (e.button !== 0 || !app.mayPress(e)) return;
       e.preventDefault();
       try { el.setPointerCapture(e.pointerId); } catch (err) { /* old Safari: fine without */ }
-      down = true;
+      app.pointer = { id: e.pointerId, el: el };
       var p = local(e); onPress(p[0], p[1]);
     });
-    el.addEventListener('pointermove', function (e) { if (down) { var p = local(e); onDrag(p[0], p[1]); } });
-    function up() { down = false; }
-    el.addEventListener('pointerup', up);
-    el.addEventListener('pointercancel', up);
-    el.addEventListener('lostpointercapture', up);
+    el.addEventListener('pointermove', function (e) {
+      var held = app.pointer;
+      if (!held || held.id !== e.pointerId || held.el !== el) return;
+      if (e.buttons === 0) { app.pointer = null; return; }   // a release we couldn't see
+      var p = local(e); onDrag(p[0], p[1]);
+    });
+  }
+  // Ignore a press while another pointer is down, except from the mouse (a new mouse press
+  // proves the old one was released, so a lost release can't lock the applet).
+  mayPress(e) { return !this.pointer || this.pointer.id === e.pointerId || e.pointerType === 'mouse'; }
+  releases() {   // on the window: with capture, releases arrive wherever the pointer is
+    var app = this;
+    function up(e) { if (app.pointer && app.pointer.id === e.pointerId) app.pointer = null; }
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
   }
 
   // x or h changed: hide the lower panels until n is clicked, and rescale their y axes.
@@ -852,19 +867,47 @@ Component.prototype.paintNow = function () {
 // #selftest runs them all and prints the values as JSON (tests/ compares them with the
 // original's); #shot=<scenario>:<step> stops at one capture point, unscaled.
 // Steps: a = signals chosen, b..e = n swept to the panel's 1/4, 1/2, 3/4 and end.
+// The [name, actions] scenarios are lists of user actions (same lists as DtProbe and
+// tests/dt_model.py): ['preset', 'x'|'h', tooltip] presses a button; ['down'|'drag',
+// 'x'|'h'|'dual', x, y] is a mouse press or drag in panel pixels, possibly outside the panel.
 // ---------------------------------------------------------------------------------------
 var SCENARIOS = [
   ['d1_pulse_pulse', 'Square pulse', 'Square pulse', false],
   ['d2_pulse_exponential', 'Square pulse', 'Right-sided exponential', false],
   ['d3_squarewave_exponential', 'One period of a square wave', 'Right-sided exponential', false],
   ['d4_impulse_squarewave', 'Unit Impulse', 'One period of a square wave', false],
-  ['d5_drawn_exponential', 'Clear', 'Right-sided exponential', true]
+  ['d5_drawn_exponential', 'Clear', 'Right-sided exponential', true],
+  ['d6_left_and_outside', [
+    ['preset', 'x', 'Square pulse'], ['preset', 'h', 'Clear'],
+    ['down', 'h', 140, 30], ['drag', 'h', 110, 100], ['drag', 'h', 80, -60], ['drag', 'h', 50, 200],
+    ['drag', 'h', -30, 63],
+    ['down', 'h', 220, 63], ['drag', 'h', 300, -20], ['drag', 'h', 300, 90],
+    ['down', 'x', 60, 110], ['drag', 'x', 20, 110],
+    ['down', 'dual', 500, 63], ['drag', 'dual', 450, 63], ['drag', 'dual', 300, 63],
+    ['drag', 'dual', 100, 63], ['drag', 'dual', -40, 63],
+    ['down', 'dual', 540, 63], ['drag', 'dual', 650, 63], ['drag', 'dual', 560, 63]]],
+  ['d7_cleared', [['preset', 'x', 'Unit Impulse']]],
+  ['d8_clicks', [['down', 'dual', 300, 63], ['down', 'dual', 100, 63],
+                 ['down', 'dual', 581, 63], ['down', 'dual', 0, 63]]]
 ];
 function press(app, which, tip) {
   var list = app.buttons[which], panel = which === 'x' ? app.xInputPanel : app.hInputPanel;
   for (var k = 0; k < list.length; k++) if (list[k].tip === tip) app.pressPreset(list[k], panel);
 }
 function runScenario(app, sc, lastStep) {
+  if (Array.isArray(sc[1])) {   // a list of actions (no intermediate steps)
+    sc[1].forEach(function (a) {
+      if (a[0] === 'preset') return press(app, a[1], a[2]);
+      if (a[1] === 'dual') {
+        var dl = app.xhDualPanel.mouseListener;
+        if (a[0] === 'down') dl.mousePressed(a[2]); else dl.mouseDragged(a[2]);
+        return;
+      }
+      var ml = (a[1] === 'x' ? app.xInputPanel : app.hInputPanel).mouseListener;
+      if (a[0] === 'down') ml.mousePressed(a[2], a[3]); else ml.mouseDragged(a[2], a[3]);
+    });
+    return;
+  }
   press(app, 'x', sc[1]);
   press(app, 'h', sc[2]);
   if (sc[3]) {   // press then drag a rising line across the right half of the x panel
@@ -905,6 +948,10 @@ function selfTest(app) {
 }
 function shot(app, spec) {
   var parts = spec.split(':'), name = parts[0], step = parts[1] || 'e';
+  if (name === 'd0_initial') return;
+  // A mistyped name would otherwise run every scenario and screenshot the wrong state.
+  if (!SCENARIOS.some(function (s) { return s[0] === name; }))
+    throw new Error('unknown #shot scenario "' + name + '"');
   for (var i = 0; i < SCENARIOS.length; i++) {
     var last = SCENARIOS[i][0] === name;
     runScenario(app, SCENARIOS[i], last ? step : null);
@@ -933,7 +980,7 @@ var resizeTimer = 0;
 window.addEventListener('resize', function () { clearTimeout(resizeTimer); resizeTimer = setTimeout(fit, 60); });
 
 if (hash === '#selftest') selfTest(new DTConvolve(document.createElement('div')));
-if (bare && hash.slice(6) !== 'd0_initial') shot(app, hash.slice(6));
+if (bare) shot(app, hash.slice(6));
 // Draw synchronously: headless Chrome may run no animation frames before it dumps the page.
 fit();
 </script>

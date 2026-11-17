@@ -35,6 +35,8 @@ what you saw (a screenshot helps).
 ## Keyboard and touch (nice to have)
 - [ ] Tab reaches the eight preset buttons (a blue focus ring), and Enter or Space applies them.
 - [ ] On a touch screen or tablet: drawing and dragging t work with a finger.
+- [ ] Touch: while one finger drags t, a second finger on x(t) or on a button does nothing; after
+      lifting the first finger, the second one works normally (QUIRKS.md CT deviation 8).
 
 ## Page
 - [ ] "Welcome!", "Exercises" and "Quiz" expand and collapse. The equation renders as math.

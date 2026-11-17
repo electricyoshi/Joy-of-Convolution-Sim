@@ -113,8 +113,10 @@ class Drawing(unittest.TestCase):
 class MatchesOriginal(unittest.TestCase):
     def test_every_scenario_is_identical(self):
         mine = m.all_scenarios()
-        for name, _, _, _ in m.SCENARIOS:
-            ref = json.loads((ORACLE / f"{name}.json").read_text(encoding="utf-8"))
+        for name in m.scenario_names():
+            f = ORACLE / f"{name}.json"
+            self.assertTrue(f.is_file(), f"{f.name} missing: re-run tools/CtProbe.java (CLAUDE.md)")
+            ref = json.loads(f.read_text(encoding="utf-8"))
             for key, val in mine[name].items():
                 self.assertEqual(val, ref[key], f"{name}.{key}")
 

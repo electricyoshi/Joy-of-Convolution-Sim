@@ -94,6 +94,12 @@ public class DtProbe {
         scenario("d4_impulse_squarewave", "Unit Impulse", "One period of a square wave", false);
         scenario("d5_drawn_exponential", "Clear", "Right-sided exponential", true);
 
+        // What the preset sweeps above never reach (same lists as the port and
+        // tests/dt_model.py; each starts with presets or a fresh press).
+        actions("d6_left_and_outside", D6);
+        actions("d7_cleared", D7);
+        actions("d8_clicks", D8);
+
         System.out.println("done: " + outDir.getAbsolutePath());
         System.exit(0);
     }
@@ -125,6 +131,48 @@ public class DtProbe {
             prev = stop;
         }
         mouse(dual, MouseEvent.MOUSE_RELEASED, prev, y);
+        writeJson(name);
+    }
+
+    // {"preset", "x"|"h", tooltip}, or {"down"|"drag", "x"|"h"|"dual", x, y} in panel pixels.
+    // Drags may leave the panel: Swing keeps sending mouseDragged to the pressed component.
+    static final String[][] D6 = {
+        {"preset", "x", "Square pulse"}, {"preset", "h", "Clear"},
+        {"down", "h", "140", "30"}, {"drag", "h", "110", "100"},     // draw h leftward,
+        {"drag", "h", "80", "-60"}, {"drag", "h", "50", "200"},      // above and below (axes grow),
+        {"drag", "h", "-30", "63"},                                  // past the left end;
+        {"down", "h", "220", "63"}, {"drag", "h", "300", "-20"},     // past the right end,
+        {"drag", "h", "300", "90"},                                  // and a move with the same x
+        {"down", "x", "60", "110"}, {"drag", "x", "20", "110"},      // sketch on x, leftward
+        {"down", "dual", "500", "63"}, {"drag", "dual", "450", "63"}, // sweep n leftward in jumps,
+        {"drag", "dual", "300", "63"}, {"drag", "dual", "100", "63"},
+        {"drag", "dual", "-40", "63"},                                // past the left end;
+        {"down", "dual", "540", "63"}, {"drag", "dual", "650", "63"}, // a new press: past the
+        {"drag", "dual", "560", "63"}};                               // right end (n 18, 19 unseen)
+    static final String[][] D7 = { {"preset", "x", "Unit Impulse"} };  // cleared, no click yet
+    static final String[][] D8 = {                                     // clicks without drags
+        {"down", "dual", "300", "63"}, {"down", "dual", "100", "63"},
+        {"down", "dual", "581", "63"}, {"down", "dual", "0", "63"}};
+
+    static void actions(String name, String[][] acts) throws Exception {
+        JComponent held = null;
+        int lastX = 0, lastY = 0;
+        for (String[] a : acts) {
+            boolean drag = a[0].equals("drag");
+            if (held != null && !drag) {   // the previous gesture ends before the next begins
+                mouse(held, MouseEvent.MOUSE_RELEASED, lastX, lastY);
+                held = null;
+            }
+            if (a[0].equals("preset")) { press(find(a[1].equals("x") ? xButtons : hButtons, a[2]), 5, 5); continue; }
+            JComponent p = (JComponent) field(a[1].equals("x") ? "xInputPanel"
+                    : a[1].equals("h") ? "hInputPanel" : "xhDualPanel");
+            lastX = Integer.parseInt(a[2]); lastY = Integer.parseInt(a[3]);
+            mouse(p, drag ? MouseEvent.MOUSE_DRAGGED : MouseEvent.MOUSE_PRESSED, lastX, lastY);
+            held = p;
+        }
+        if (held != null) mouse(held, MouseEvent.MOUSE_RELEASED, lastX, lastY);
+        settle(300);
+        capture(name + "_e_end");
         writeJson(name);
     }
 

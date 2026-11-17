@@ -106,12 +106,58 @@ public class CtProbe {
         settle(300);
         capture("s6_single_click");
 
+        // What the preset sweeps above never reach. The same action lists are in the port's
+        // SCENARIOS and tests/ct_model.py; each starts from presets or a fresh press, so the
+        // earlier state that carries over (s6 here, s5 in the port) doesn't matter.
+        actions("s7_left_and_outside", S7);
+        actions("s8_cleared", S8);
+        actions("s9_clicks", S9);
+
         System.out.println("done: " + outDir.getAbsolutePath());
         f.dispose();
         System.exit(0);
     }
 
     static Signal sig(ControllableSignal c) { return c.getSigPanel().getSignal(); }
+
+    // {"preset", "x"|"h", name}, or {"down"|"drag", "x"|"h"|"conv", x, y} in panel pixels.
+    // Drags may leave the panel: AWT keeps sending mouseDrag to the pressed component.
+    static final String[][] S7 = {
+        {"preset", "x", "pulse"}, {"preset", "h", "clear"},
+        {"down", "h", "120", "30"}, {"drag", "h", "90", "90"},      // draw h leftward,
+        {"drag", "h", "60", "-40"}, {"drag", "h", "30", "200"},     // above and below the panel,
+        {"drag", "h", "-20", "62"},                                 // past the left end;
+        {"down", "h", "200", "62"}, {"drag", "h", "250", "-10"},    // past the right end,
+        {"drag", "h", "250", "50"},                                 // and a move with no new column
+        {"down", "x", "30", "100"}, {"drag", "x", "60", "100"},     // sketch over a preset
+        {"down", "conv", "400", "0"}, {"drag", "conv", "350", "0"}, // sweep t leftward in jumps,
+        {"drag", "conv", "200", "0"}, {"drag", "conv", "100", "0"},
+        {"drag", "conv", "-50", "0"},                               // past the left end;
+        {"down", "conv", "450", "0"}, {"drag", "conv", "600", "0"}, // a new press: past the right
+        {"drag", "conv", "470", "0"}};                              // end and back (401..449 unseen)
+    static final String[][] S8 = { {"preset", "x", "decay"} };      // lower panels cleared, no click yet
+    static final String[][] S9 = {                                  // clicks without drags: gaps in y
+        {"down", "conv", "300", "0"}, {"down", "conv", "100", "0"},
+        {"down", "conv", "473", "0"}, {"down", "conv", "0", "0"}};
+
+    static void actions(String name, String[][] acts) throws Exception {
+        for (final String[] a : acts) {
+            if (a[0].equals("preset")) { press(a[1].equals("x") ? cx : ch, a[2]); continue; }
+            final int x = Integer.parseInt(a[2]), y = Integer.parseInt(a[3]);
+            final boolean down = a[0].equals("down");
+            onEdt(new Runnable() { public void run() {
+                if (a[1].equals("conv")) {
+                    if (down) conv.mouseDown(null, x, y); else conv.mouseDrag(null, x, y);
+                } else {
+                    MouseSigPanel p = (a[1].equals("x") ? cx : ch).fSigPanel;
+                    if (down) p.mouseDown(null, x, y); else p.mouseDrag(null, x, y);
+                }
+            } });
+        }
+        settle(300);
+        capture(name + "_e_end");
+        writeJson(name);
+    }
 
     static void scenario(String name, String xPreset, String hPreset, String draw, int[] stops)
             throws Exception {
