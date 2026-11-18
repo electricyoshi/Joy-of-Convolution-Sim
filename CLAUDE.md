@@ -78,7 +78,9 @@ Michael Ross 2001), for a Seattle Pacific University course. Sibling and style m
 - `py tools/compare.py ct|dt` (Pillow): screenshots every `#shot` at 1x and writes
   original | port | diff sheets to `reference/captures/compare/<ct|dt>/`. Currently < 1 % (CT)
   and ~1.7 % (DT) of pixels differ: text antialiasing, steep edges, redrawn equation/icons.
-- README screenshot `docs/ct-port.png`: a scratch copy of the page with a script appended that
+- README demo GIFs `docs/{ct,dt}-demo.gif`: `py tools/make_demo.py` (headless Chrome renders each
+  frame of a t/n sweep from a temp page copy; Pillow assembles them).
+- Older screenshot `docs/ct-port.png` (no longer in the README): a scratch copy of the page with a script appended that
   runs `JOC.runScenario(JOC.applet, JOC.SCENARIOS[2], 'c')`, drags to x = 300, then
   `JOC.applet.layout(1.15, 1)`; headless Chrome at 1280x1500, cropped to the white applet box.
 
@@ -140,8 +142,10 @@ Michael Ross 2001), for a Seattle Pacific University course. Sibling and style m
   page (leftward/outside drags, h drawing, cleared state, clicks), all identical; fixed
   multi-touch splicing, a lost release leaving a drag stuck, and silent bad `#shot` names.
   Suite: 56 tests.
-- Waiting on Jon: CHECKLIST.md on Windows + Mac (both pages, incl. the new two-finger item),
-  transcripts vs audio (CT and DT).
+- 2026-11-18: Jon ran CHECKLIST.md, no issues. GitHub Pages enabled (legacy, `main` /):
+  https://electricyoshi.github.io/Joy-of-Convolution-Sim/ . Shared with the signals professor only;
+  still no student links until permission. README now leads with the run links + demo GIFs.
+- Waiting on Jon: transcripts vs audio (punted; needs `reference/` copied to the new PC).
 - Next: Phase 4 accessibility polish, then Phase 5 after permission. The JDK is only needed
   for re-capturing; **uninstall it once Jon has signed off the ports**
   (`winget uninstall EclipseAdoptium.Temurin.8.JDK`).

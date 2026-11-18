@@ -34,6 +34,9 @@ their code, and the transcripts and quiz reproduce their text, so all of it is a
 - **Development happens in a public repo now** (Jon, 2026-11-17). That interim public exposure is
   accepted. The gate is on **students**: no student-facing links, no announcements, no course
   advertising until written permission is granted (BACKLOG.md).
+- **GitHub Pages is on early** (Jon, 2026-11-18): https://electricyoshi.github.io/Joy-of-Convolution-Sim/
+  so the professor can run the pages without downloading. The URL is shared only with the signals
+  professor until permission; the README and pages keep the work-in-progress notice.
 - Choose the LICENSE after permission (it may have to be "used with permission", not MIT).
 - If permission is refused: SPU-only use, distributed to enrolled students through the course
   LMS (GitHub Pages cannot restrict viewers). Decide then.
@@ -126,7 +129,7 @@ readers (visually hidden, so the faithful look is unchanged), MathML equations, 
 ### Phase 5: Publish (after permission)
 README in the sibling's style (credits block at the top, screenshots, "Run it in your browser",
 things to try (taken from the transcribed Exercises), offline ZIP instructions, tests), a LICENSE
-per the permission terms, a public repo, then Pages enabled with legacy build from `main` /.
+per the permission terms. (Pages, the README run links and demo GIFs were done early, 2026-11-18.)
 Students get the README URL.
 
 ## Credits (on every page header + full list in About)
